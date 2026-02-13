@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "build": "1",
+  "minimumSystemVersion": "14.0",
+  "releaseNotes": "Initial release of ClawAPI.",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.0.0/ClawAPI-1.0.0.zip",
+  "sha256": "bc7e6d6139458206a8e5d0fe16d63f590d487dcadfadb00abb7bc2eed4d937d5"
+}
