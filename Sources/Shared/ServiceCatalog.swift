@@ -38,8 +38,17 @@ public enum ServiceCatalog {
             keyPlaceholder: "xai-..."
         ),
         ServiceTemplate(
-            name: "Anthropic",
+            name: "Anthropic (Claude)",
             scope: "anthropic",
+            domains: ["api.anthropic.com"],
+            credentialType: .customHeader,
+            customHeaderName: "x-api-key",
+            suggestedTags: ["coding", "analysis", "chat"],
+            keyPlaceholder: "sk-ant-..."
+        ),
+        ServiceTemplate(
+            name: "Claude",
+            scope: "claude",
             domains: ["api.anthropic.com"],
             credentialType: .customHeader,
             customHeaderName: "x-api-key",
@@ -91,6 +100,114 @@ public enum ServiceCatalog {
             suggestedTags: ["research"],
             keyPlaceholder: "pplx-..."
         ),
+        ServiceTemplate(
+            name: "OpenRouter",
+            scope: "openrouter",
+            domains: ["openrouter.ai"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["general", "chat", "coding"],
+            keyPlaceholder: "sk-or-..."
+        ),
+        ServiceTemplate(
+            name: "Cerebras",
+            scope: "cerebras",
+            domains: ["api.cerebras.ai"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Together AI",
+            scope: "together",
+            domains: ["api.together.xyz"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "general"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Venice AI",
+            scope: "venice",
+            domains: ["api.venice.ai"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["chat", "general"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Moonshot (Kimi)",
+            scope: "moonshot",
+            domains: ["api.moonshot.ai", "api.moonshot.cn"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "sk-..."
+        ),
+        ServiceTemplate(
+            name: "MiniMax",
+            scope: "minimax",
+            domains: ["api.minimax.io", "api.minimax.chat"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Synthetic",
+            scope: "synthetic",
+            domains: ["api.synthetic.new"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["general", "chat"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Z.AI (GLM)",
+            scope: "zai",
+            domains: ["api.z.ai"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["chat", "coding"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "OpenCode Zen",
+            scope: "opencode",
+            domains: ["api.opencode.ai"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Vercel AI Gateway",
+            scope: "vercel-ai-gateway",
+            domains: ["sdk.vercel.ai"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["general", "coding"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Baidu Qianfan",
+            scope: "qianfan",
+            domains: ["qianfan.baidubce.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["chat", "general"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Xiaomi MiMo",
+            scope: "xiaomi",
+            domains: ["api.xiaomimimo.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "API key"
+        ),
 
         // ── Developer APIs ──
         ServiceTemplate(
@@ -103,13 +220,22 @@ public enum ServiceCatalog {
             keyPlaceholder: "ghp_... or github_pat_..."
         ),
 
-        // ── Media / Other ──
+        // ── Media / Speech ──
         ServiceTemplate(
             name: "ElevenLabs",
             scope: "elevenlabs",
             domains: ["api.elevenlabs.io"],
             credentialType: .customHeader,
             customHeaderName: "xi-api-key",
+            suggestedTags: ["audio"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Deepgram",
+            scope: "deepgram",
+            domains: ["api.deepgram.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
             suggestedTags: ["audio"],
             keyPlaceholder: "API key"
         ),
