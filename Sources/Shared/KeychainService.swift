@@ -107,6 +107,26 @@ public struct KeychainService: Sendable {
     public func hasSecret(forScope scope: String) -> Bool {
         (try? retrieve(forScope: scope)) != nil
     }
+
+    // MARK: - Admin key helpers
+
+    /// Admin keys are stored under "{scope}-admin" in the Keychain.
+    public func saveAdminKey(_ key: String, forScope scope: String) throws {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        try save(string: trimmed, forScope: "\(scope)-admin")
+    }
+
+    public func retrieveAdminKey(forScope scope: String) throws -> String {
+        try retrieveString(forScope: "\(scope)-admin")
+    }
+
+    public func deleteAdminKey(forScope scope: String) throws {
+        try delete(forScope: "\(scope)-admin")
+    }
+
+    public func hasAdminKey(forScope scope: String) -> Bool {
+        (try? retrieve(forScope: "\(scope)-admin")) != nil
+    }
 }
 
 // MARK: - Errors

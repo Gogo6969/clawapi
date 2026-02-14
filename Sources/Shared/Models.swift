@@ -59,6 +59,7 @@ public struct ScopePolicy: Identifiable, Codable, Sendable, Hashable {
     public var preferredFor: [String]
     public var createdAt: Date
     public var lastUsedAt: Date?
+    public var hasAdminSecret: Bool
 
     public init(
         id: UUID = UUID(),
@@ -73,7 +74,8 @@ public struct ScopePolicy: Identifiable, Codable, Sendable, Hashable {
         customHeaderName: String? = nil,
         preferredFor: [String] = [],
         createdAt: Date = Date(),
-        lastUsedAt: Date? = nil
+        lastUsedAt: Date? = nil,
+        hasAdminSecret: Bool = false
     ) {
         self.id = id
         self.serviceName = serviceName
@@ -88,9 +90,10 @@ public struct ScopePolicy: Identifiable, Codable, Sendable, Hashable {
         self.preferredFor = preferredFor
         self.createdAt = createdAt
         self.lastUsedAt = lastUsedAt
+        self.hasAdminSecret = hasAdminSecret
     }
 
-    // Backward-compatible decoding: existing policies.json without isEnabled defaults to true
+    // Backward-compatible decoding: existing policies.json without new fields defaults gracefully
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -106,6 +109,7 @@ public struct ScopePolicy: Identifiable, Codable, Sendable, Hashable {
         preferredFor = try container.decodeIfPresent([String].self, forKey: .preferredFor) ?? []
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         lastUsedAt = try container.decodeIfPresent(Date.self, forKey: .lastUsedAt)
+        hasAdminSecret = try container.decodeIfPresent(Bool.self, forKey: .hasAdminSecret) ?? false
     }
 }
 

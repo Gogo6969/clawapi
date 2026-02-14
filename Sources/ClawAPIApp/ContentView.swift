@@ -39,7 +39,7 @@ enum TitleBarBranding {
 }
 
 enum AppTab: Hashable {
-    case providers, activity, logs
+    case providers, activity, logs, usage
 }
 
 struct ContentView: View {
@@ -73,6 +73,12 @@ struct ContentView: View {
                     Label("Logs", systemImage: "list.bullet.rectangle")
                 }
                 .tag(AppTab.logs)
+
+            UsageView()
+                .tabItem {
+                    Label("Usage", systemImage: "chart.bar")
+                }
+                .tag(AppTab.usage)
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

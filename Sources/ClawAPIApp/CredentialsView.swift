@@ -166,6 +166,7 @@ struct ScopePolicyRow: View {
     let policy: ScopePolicy
     let store: PolicyStore
     var onDelete: () -> Void
+    @State private var showAdminKeySheet = false
 
     @ViewBuilder
     private var menuContent: some View {
@@ -207,6 +208,18 @@ struct ScopePolicyRow: View {
                 Label("Queue (Pending)", systemImage: "clock.fill")
             }
             .disabled(policy.approvalMode == .pending)
+        }
+
+        if BillingService.supportedScopes.contains(policy.scope) {
+            Divider()
+            Button {
+                showAdminKeySheet = true
+            } label: {
+                Label(
+                    policy.hasAdminSecret ? "Change Admin Key" : "Add Admin Key",
+                    systemImage: "key.viewfinder"
+                )
+            }
         }
 
         Divider()
@@ -321,6 +334,25 @@ struct ScopePolicyRow: View {
         .contentShape(Rectangle())
         .opacity(policy.isEnabled ? 1.0 : 0.6)
         .contextMenu { menuContent }
+        .sheet(isPresented: $showAdminKeySheet) {
+            AdminKeySheet(
+                policy: policy,
+                onSave: { key in
+                    let keychain = KeychainService()
+                    try? keychain.saveAdminKey(key, forScope: policy.scope)
+                    var updated = policy
+                    updated.hasAdminSecret = true
+                    store.updatePolicy(updated)
+                },
+                onRemove: {
+                    let keychain = KeychainService()
+                    try? keychain.deleteAdminKey(forScope: policy.scope)
+                    var updated = policy
+                    updated.hasAdminSecret = false
+                    store.updatePolicy(updated)
+                }
+            )
+        }
     }
 
     // MARK: - Visual helpers

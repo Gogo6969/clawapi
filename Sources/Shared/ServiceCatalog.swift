@@ -209,6 +209,16 @@ public enum ServiceCatalog {
             keyPlaceholder: "API key"
         ),
 
+        ServiceTemplate(
+            name: "DeepSeek",
+            scope: "deepseek",
+            domains: ["api.deepseek.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat", "research"],
+            keyPlaceholder: "sk-..."
+        ),
+
         // ── Developer APIs ──
         ServiceTemplate(
             name: "GitHub",
