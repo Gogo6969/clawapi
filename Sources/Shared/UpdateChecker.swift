@@ -33,6 +33,12 @@ public enum UpdateStatus: Equatable, Sendable {
 public final class UpdateChecker: ObservableObject {
     @Published public var status: UpdateStatus = .idle
 
+    /// Convenience for UI — true when an update is available.
+    public var hasUpdate: Bool {
+        if case .available = status { return true }
+        return false
+    }
+
     public init() {}
 
     // MARK: - Check for Updates

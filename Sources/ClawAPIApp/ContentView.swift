@@ -130,7 +130,7 @@ struct ContentView: View {
                 Button {
                     showingUpdate = true
                 } label: {
-                    Label("Updates", systemImage: "arrow.down.circle")
+                    Label("Updates", systemImage: updateChecker.hasUpdate ? "arrow.down.circle.fill" : "arrow.down.circle")
                 }
                 .help("Check for ClawAPI updates")
             }
@@ -138,6 +138,15 @@ struct ContentView: View {
         .onAppear {
             if !ScreenshotMode.isEnabled {
                 TitleBarBranding.install()
+            }
+        }
+        .task {
+            // Auto-check for updates on launch (silent, non-blocking)
+            guard !ScreenshotMode.isEnabled else { return }
+            try? await Task.sleep(for: .seconds(2)) // let the UI settle
+            await updateChecker.checkForUpdates()
+            if case .available = updateChecker.status {
+                showingUpdate = true
             }
         }
         .sheet(isPresented: $showingAddScope) {
