@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="screenshots/01-welcome-start.png" width="420" alt="ClawAPI — Model Switcher & Key Vault for OpenClaw">
+  <img src="screenshots/03-providers.png" width="600" alt="ClawAPI — Model Switcher & Key Vault for OpenClaw">
 </p>
 
 <h1 align="center">ClawAPI</h1>
