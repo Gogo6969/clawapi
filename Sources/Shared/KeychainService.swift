@@ -77,7 +77,8 @@ public struct KeychainService: Sendable {
         guard let string = String(data: data, encoding: .utf8) else {
             throw KeychainError.decodingFailed
         }
-        return string
+        // Trim whitespace/newlines that may have been pasted with the key
+        return string.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Delete
