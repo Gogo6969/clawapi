@@ -92,11 +92,11 @@ struct AddScopeSheet: View {
                 ))
 
             case .success:
-                SuccessView(serviceName: addedServiceName)
+                SuccessView(serviceName: addedServiceName, isFirstProvider: isFirstProvider)
                     .transition(.opacity)
             }
         }
-        .frame(width: 520, height: step == .success ? 260 : 620)
+        .frame(width: 520, height: step == .success ? (isFirstProvider ? 340 : 260) : 620)
         .animation(.easeInOut(duration: 0.25), value: step == .success)
         .alert("Keychain Access", isPresented: $showKeychainWarning) {
             Button("Continue") {
@@ -173,6 +173,11 @@ struct AddScopeSheet: View {
         !secret.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    /// True when no providers have been added yet — used to show the Keychain explanation.
+    private var isFirstProvider: Bool {
+        store.policies.isEmpty
+    }
+
     private func attemptAdd() {
         if hasSecret {
             showKeychainWarning = true
@@ -216,10 +221,11 @@ struct AddScopeSheet: View {
 
         store.addPolicy(policy)
 
-        // Show success, then auto-dismiss
+        // Show success, then auto-dismiss (longer delay for first provider so user reads Keychain info)
+        let wasFirstProvider = isFirstProvider
         addedServiceName = name
         withAnimation { step = .success }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + (wasFirstProvider ? 5.0 : 1.0)) {
             dismiss()
         }
     }
@@ -576,6 +582,7 @@ private struct APIKeyEntryView: View {
 
 private struct SuccessView: View {
     let serviceName: String
+    let isFirstProvider: Bool
     @State private var animate = false
 
     var body: some View {
@@ -583,7 +590,7 @@ private struct SuccessView: View {
             Spacer()
 
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 64))
+                .font(.system(size: 52))
                 .foregroundStyle(.green)
                 .symbolRenderingMode(.hierarchical)
                 .scaleEffect(animate ? 1.0 : 0.5)
@@ -598,6 +605,31 @@ private struct SuccessView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .opacity(animate ? 1.0 : 0.0)
+
+            if isFirstProvider {
+                VStack(spacing: 8) {
+                    Divider()
+                        .padding(.horizontal, 40)
+
+                    HStack(spacing: 8) {
+                        Image(systemName: "lock.shield")
+                            .font(.title3)
+                            .foregroundStyle(.blue)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Keychain Access")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                            Text("When OpenClaw uses your credentials for the first time, macOS will show a security prompt asking for your login password. Click **\"Always Allow\"** so it doesn't ask again.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(.horizontal, 32)
+                    .padding(.top, 4)
+                }
+                .opacity(animate ? 1.0 : 0.0)
+            }
 
             Spacer()
         }
