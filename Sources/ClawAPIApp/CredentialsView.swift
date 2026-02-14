@@ -10,6 +10,7 @@ struct CredentialsView: View {
     @State private var selectedPolicy: ScopePolicy?
     @State private var showingDeleteAlert = false
     @State private var policyToDelete: ScopePolicy?
+    @AppStorage("dismissedKeychainBanner") private var dismissedKeychainBanner = false
 
     var filteredPolicies: [ScopePolicy] {
         if searchText.isEmpty {
@@ -63,6 +64,35 @@ struct CredentialsView: View {
                 .onTapGesture { logsFilter = .denied; selectedTab = .logs }
             }
             .padding()
+
+            // Keychain info banner — shown until dismissed
+            if !store.policies.isEmpty && !dismissedKeychainBanner {
+                HStack(spacing: 10) {
+                    Image(systemName: "lock.shield.fill")
+                        .font(.body)
+                        .foregroundStyle(.blue)
+
+                    Text("If macOS asks for your login password, click **\"Always Allow\"** to let ClawAPI securely access your credentials.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer()
+
+                    Button {
+                        withAnimation { dismissedKeychainBanner = true }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Dismiss this message")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.blue.opacity(0.06))
+            }
 
             Divider()
 
