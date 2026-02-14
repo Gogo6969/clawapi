@@ -1,10 +1,16 @@
-# ClawAPI
+<p align="center">
+  <img src="screenshots/01-welcome-start.png" width="420" alt="ClawAPI — Model Switcher & Key Vault for OpenClaw">
+</p>
 
-**Model Switcher & Key Vault for OpenClaw**
+<h1 align="center">ClawAPI</h1>
+<p align="center"><strong>Model Switcher & Key Vault for OpenClaw</strong></p>
+<p align="center">
+A native macOS app that lets you switch AI models and securely manage API keys for <a href="https://openclaw.app">OpenClaw</a>.<br>
+Supports OpenAI, Anthropic, Google, xAI, Groq, Mistral, Ollama, and 15+ more providers.<br>
+All keys stored in the macOS Keychain — never on disk.
+</p>
 
-A native macOS menu-bar app that lets you switch AI models and securely manage API keys for [OpenClaw](https://openclaw.app). Supports OpenAI, Anthropic, Google Gemini, Groq, Ollama, and more — all stored in the macOS Keychain, never on disk.
-
-![Welcome](screenshots/01-welcome-start.png)
+---
 
 ## Install
 
@@ -16,10 +22,10 @@ Installs `ClawAPI.app` to `/Applications`. Requires macOS 14+.
 
 ## Features
 
-- **One-click model switching** — Pick any model from OpenAI, Anthropic, Google, Groq, or Ollama and apply it instantly to OpenClaw
-- **Secure key vault** — API keys are stored in the macOS Keychain with hardware encryption, never written to disk
-- **Sub-model picker** — Browse the full model catalog for each provider and select exactly the model you want
-- **Ollama support** — Use local models running on Ollama with no API key required
+- **One-click model switching** — Pick any model from any provider and apply it instantly
+- **Secure key vault** — API keys stored in the macOS Keychain with hardware encryption
+- **Sub-model picker** — Browse the full model catalog for each provider
+- **15+ providers** — OpenAI, Anthropic, xAI, Groq, Mistral, Google, Ollama, and more
 - **Auto-sync** — Changes are written directly to OpenClaw's config, no restart needed
 - **Auto-update** — Built-in update checker fetches new releases from GitHub
 - **Usage dashboard** — Check your credit balance and billing across providers
@@ -27,26 +33,44 @@ Installs `ClawAPI.app` to `/Applications`. Requires macOS 14+.
 
 ## Screenshots
 
-| Providers | Sync |
-|:-:|:-:|
-| ![Providers](screenshots/03-providers.png) | ![Sync](screenshots/04-sync.png) |
+<table>
+<tr>
+<td align="center"><strong>Providers</strong></td>
+<td align="center"><strong>Sync</strong></td>
+</tr>
+<tr>
+<td><img src="screenshots/03-providers.png" width="500" alt="Providers tab"></td>
+<td><img src="screenshots/04-sync.png" width="500" alt="Sync tab"></td>
+</tr>
+<tr>
+<td align="center"><strong>Get Started</strong></td>
+<td align="center"><strong>Activity</strong></td>
+</tr>
+<tr>
+<td><img src="screenshots/10-get-started.png" width="500" alt="Get Started"></td>
+<td><img src="screenshots/05-activity.png" width="500" alt="Activity tab"></td>
+</tr>
+<tr>
+<td align="center"><strong>How It Works</strong></td>
+<td align="center"><strong>FAQ</strong></td>
+</tr>
+<tr>
+<td><img src="screenshots/02-how-it-works.png" width="500" alt="How It Works"></td>
+<td><img src="screenshots/09-faq.png" width="500" alt="FAQ"></td>
+</tr>
+</table>
 
-| How It Works | FAQ |
-|:-:|:-:|
-| ![How It Works](screenshots/02-how-it-works.png) | ![FAQ](screenshots/09-faq.png) |
+## How It Works
+
+1. **Add a Provider** — Click + in the toolbar, pick a provider, paste your API key
+2. **Pick a Model** — Use the dropdown to choose a sub-model (GPT-4.1, Claude Sonnet 4, etc.)
+3. **Done** — ClawAPI syncs everything to OpenClaw automatically. No restart needed.
 
 ## Requirements
 
 - macOS 14.0 or later (Apple Silicon or Intel)
 - [OpenClaw](https://openclaw.app) installed
 - API key from at least one supported provider (or Ollama running locally)
-
-## How It Works
-
-1. Add your API keys in the **Providers** tab
-2. Pick a model from the **Model Switcher**
-3. ClawAPI writes the selection to OpenClaw's config
-4. OpenClaw picks it up — no restart needed
 
 ## Support Development
 
