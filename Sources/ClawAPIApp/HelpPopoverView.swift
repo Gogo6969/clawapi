@@ -11,19 +11,31 @@ struct HelpPopoverView: View {
                     icon: "key",
                     color: .purple,
                     title: "Providers",
-                    text: "Manage your API providers. Drag to reorder — #1 is your MAIN provider. Use the ENABLED/DISABLED button to toggle providers on or off. Colored tags show what each provider is best for (coding, research, chat, etc.)."
+                    text: "Your AI providers. Use the model dropdown to switch sub-models. Drag rows to set priority — #1 is what OpenClaw uses first. Toggle ENABLED/DISABLED to control costs."
+                )
+                HelpSection(
+                    icon: "arrow.triangle.2.circlepath",
+                    color: .green,
+                    title: "Sync",
+                    text: "Shows what's currently synced to OpenClaw — active model, fallbacks, and provider config."
                 )
                 HelpSection(
                     icon: "gauge",
                     color: .blue,
                     title: "Activity",
-                    text: "See request counts, recent activity, and pending requests. Click any card to jump to the relevant section."
+                    text: "Request counts and recent activity. Click any card for details."
                 )
                 HelpSection(
                     icon: "list.bullet.rectangle",
                     color: .orange,
                     title: "Logs",
-                    text: "Full history of every time OpenClaw accessed a credential. Filter by result or search by provider."
+                    text: "Full history of every API request. Filter by result or search by provider."
+                )
+                HelpSection(
+                    icon: "chart.bar",
+                    color: .teal,
+                    title: "Usage",
+                    text: "Check your credit balance and spending for supported providers."
                 )
 
                 Divider()
@@ -32,13 +44,13 @@ struct HelpPopoverView: View {
                     icon: "plus.circle",
                     color: .green,
                     title: "Add Provider (+)",
-                    text: "Connect a new API provider. Select a provider, paste your API key, and OpenClaw can start using it. Open Advanced Settings to set \"Best For\" tags — these tell OpenClaw which tasks each provider excels at."
+                    text: "Connect a new provider. Pick from 15+ AI services or add a custom one."
                 )
                 HelpSection(
                     icon: "bell.badge",
                     color: .red,
-                    title: "Pending Requests (bell)",
-                    text: "When a provider requires manual approval, requests queue here. Approve or deny each one."
+                    title: "Pending Requests",
+                    text: "When a provider requires manual approval, requests queue here."
                 )
             }
         }

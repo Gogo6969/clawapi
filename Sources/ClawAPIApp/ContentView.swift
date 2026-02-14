@@ -11,6 +11,9 @@ enum TitleBarBranding {
                 $0.identifier?.rawValue == "main" || $0.title == "ClawAPI"
             }) ?? NSApplication.shared.mainWindow else { return }
 
+            // Disable fullscreen — ClawAPI is a utility window, not a document editor
+            window.collectionBehavior.remove(.fullScreenPrimary)
+
             // Don't add twice
             let brandingID = NSUserInterfaceItemIdentifier("clawapi-branding")
             if window.titlebarAccessoryViewControllers.contains(where: { $0.view.identifier == brandingID }) { return }
@@ -39,7 +42,7 @@ enum TitleBarBranding {
 }
 
 enum AppTab: Hashable {
-    case providers, activity, logs, usage
+    case providers, model, activity, logs, usage
 }
 
 struct ContentView: View {
@@ -61,6 +64,12 @@ struct ContentView: View {
                     Label("Providers", systemImage: "key")
                 }
                 .tag(AppTab.providers)
+
+            ModelSelectorView()
+                .tabItem {
+                    Label("Sync", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .tag(AppTab.model)
 
             ActivityView(selectedTab: $selectedTab, showingPendingReview: $showingPendingReview, logsFilter: $logsFilter)
                 .tabItem {

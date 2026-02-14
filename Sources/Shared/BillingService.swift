@@ -36,34 +36,23 @@ public struct BillingInfo: Sendable {
 public enum BillingService {
 
     /// Providers that support billing queries.
-    /// DeepSeek uses the same inference key; others need a separate admin/management key.
+    /// All require a separate admin/management key.
     public static let supportedScopes: Set<String> = [
-        "openai", "xai", "anthropic", "claude", "openrouter", "deepseek"
+        "openai", "xai", "anthropic", "openrouter"
     ]
 
-    /// Scopes where the regular inference API key is enough (no admin key needed).
-    public static let usesInferenceKey: Set<String> = ["deepseek"]
-
-    /// Dashboard URLs for all known providers.
+    /// Dashboard URLs for providers in the OpenClaw catalog.
     public static func dashboardURL(for scope: String) -> URL? {
         switch scope {
         case "openai":      URL(string: "https://platform.openai.com/usage")
         case "xai":         URL(string: "https://console.x.ai")
-        case "anthropic", "claude": URL(string: "https://console.anthropic.com/settings/billing")
+        case "anthropic":   URL(string: "https://console.anthropic.com/settings/billing")
         case "google-ai":   URL(string: "https://console.cloud.google.com/billing")
         case "mistral":     URL(string: "https://console.mistral.ai/billing")
         case "groq":        URL(string: "https://console.groq.com/settings/billing")
-        case "cohere":      URL(string: "https://dashboard.cohere.com/billing")
-        case "perplexity":  URL(string: "https://www.perplexity.ai/settings/api")
         case "openrouter":  URL(string: "https://openrouter.ai/credits")
-        case "together":    URL(string: "https://api.together.ai/settings/billing")
-        case "replicate":   URL(string: "https://replicate.com/account/billing")
-        case "elevenlabs":  URL(string: "https://elevenlabs.io/subscription")
-        case "deepgram":    URL(string: "https://console.deepgram.com/billing")
         case "huggingface": URL(string: "https://huggingface.co/settings/billing")
-        case "deepseek":    URL(string: "https://platform.deepseek.com/usage")
         case "cerebras":    URL(string: "https://cloud.cerebras.ai/billing")
-        case "venice":      URL(string: "https://venice.ai/settings/billing")
         default: nil
         }
     }
@@ -80,22 +69,7 @@ public enum BillingService {
             )
         }
 
-        // DeepSeek uses the regular inference key
-        if usesInferenceKey.contains(scope) {
-            let apiKey: String
-            do {
-                apiKey = try keychain.retrieveString(forScope: scope)
-            } catch {
-                return BillingInfo(
-                    scope: scope,
-                    dashboardURL: dashboard,
-                    error: "No API key found for \(scope)"
-                )
-            }
-            return await queryDeepSeek(apiKey: apiKey, dashboard: dashboard)
-        }
-
-        // All other providers need an admin/management key
+        // All supported providers need an admin/management key
         let adminKey: String
         do {
             adminKey = try keychain.retrieveAdminKey(forScope: scope)
@@ -112,65 +86,12 @@ public enum BillingService {
             return await queryXAI(adminKey: adminKey, dashboard: dashboard)
         case "openai":
             return await queryOpenAI(adminKey: adminKey, dashboard: dashboard)
-        case "anthropic", "claude":
+        case "anthropic":
             return await queryAnthropic(adminKey: adminKey, dashboard: dashboard, scope: scope)
         case "openrouter":
             return await queryOpenRouter(adminKey: adminKey, dashboard: dashboard)
         default:
             return BillingInfo(scope: scope, dashboardURL: dashboard, error: "Unsupported")
-        }
-    }
-
-    // MARK: - DeepSeek Balance
-
-    /// DeepSeek: GET https://api.deepseek.com/user/balance
-    /// Uses the same API key as inference — no admin key needed.
-    private static func queryDeepSeek(apiKey: String, dashboard: URL?) async -> BillingInfo {
-        let url = URL(string: "https://api.deepseek.com/user/balance")!
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = 15
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse else {
-                return BillingInfo(scope: "deepseek", dashboardURL: dashboard, error: "Invalid response")
-            }
-            guard http.statusCode == 200 else {
-                logger.error("DeepSeek billing returned \(http.statusCode)")
-                return BillingInfo(scope: "deepseek", dashboardURL: dashboard,
-                                   error: "HTTP \(http.statusCode)")
-            }
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let balanceInfos = json["balance_infos"] as? [[String: Any]] {
-                // Find USD balance first, fall back to CNY
-                let usd = balanceInfos.first { ($0["currency"] as? String) == "USD" }
-                let cny = balanceInfos.first { ($0["currency"] as? String) == "CNY" }
-                let info = usd ?? cny
-
-                if let info,
-                   let total = info["total_balance"] as? String,
-                   let currency = info["currency"] as? String {
-                    let symbol = currency == "USD" ? "$" : "¥"
-                    let granted = info["granted_balance"] as? String
-                    let topped = info["topped_up_balance"] as? String
-                    var detail: String? = nil
-                    if let granted, let topped {
-                        detail = "Purchased: \(symbol)\(topped) · Bonus: \(symbol)\(granted)"
-                    }
-                    return BillingInfo(
-                        scope: "deepseek",
-                        balance: "\(symbol)\(total) \(currency) remaining",
-                        detail: detail,
-                        dashboardURL: dashboard
-                    )
-                }
-            }
-            let body = String(data: data, encoding: .utf8) ?? "Unknown"
-            return BillingInfo(scope: "deepseek", detail: body, dashboardURL: dashboard)
-        } catch {
-            logger.error("DeepSeek billing error: \(error.localizedDescription)")
-            return BillingInfo(scope: "deepseek", dashboardURL: dashboard, error: error.localizedDescription)
         }
     }
 

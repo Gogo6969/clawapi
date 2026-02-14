@@ -37,27 +37,9 @@ struct UsageView: View {
                 }
             } else {
                 List {
-                    // Providers that auto-check balance (use inference key)
-                    let autoProviders = store.policies.filter {
-                        BillingService.usesInferenceKey.contains($0.scope)
-                    }
-                    if !autoProviders.isEmpty {
-                        Section("Balance (Automatic)") {
-                            ForEach(autoProviders) { policy in
-                                AutoUsageRow(
-                                    policy: policy,
-                                    info: viewModel.results[policy.scope],
-                                    isLoading: viewModel.loadingScopes.contains(policy.scope),
-                                    onRefresh: { Task { await viewModel.refresh(policy: policy) } }
-                                )
-                            }
-                        }
-                    }
-
-                    // Providers that need admin keys
+                    // Providers that support billing queries (need admin keys)
                     let adminProviders = store.policies.filter {
                         BillingService.supportedScopes.contains($0.scope)
-                        && !BillingService.usesInferenceKey.contains($0.scope)
                     }
                     if !adminProviders.isEmpty {
                         Section("Usage (Admin Key Required)") {
@@ -169,89 +151,6 @@ final class UsageViewModel: ObservableObject {
     }
 }
 
-// MARK: - Auto Usage Row (providers using inference key, e.g. DeepSeek)
-
-struct AutoUsageRow: View {
-    let policy: ScopePolicy
-    let info: BillingInfo?
-    let isLoading: Bool
-    var onRefresh: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "creditcard.fill")
-                .font(.title2)
-                .foregroundStyle(.green)
-                .frame(width: 32)
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(policy.serviceName)
-                        .font(.headline)
-                    Text("uses API key")
-                        .font(.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.green.opacity(0.15), in: Capsule())
-                        .foregroundStyle(.green)
-                }
-
-                if isLoading {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Checking...")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } else if let info {
-                    if let balance = info.balance {
-                        Label(balance, systemImage: "creditcard.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(.green)
-                    }
-                    if let usage = info.usage {
-                        Label(usage, systemImage: "flame.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(.orange)
-                    }
-                    if let detail = info.detail {
-                        Text(detail)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                    if let error = info.error {
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-                }
-            }
-
-            Spacer()
-
-            if let url = BillingService.dashboardURL(for: policy.scope) {
-                Link(destination: url) {
-                    Image(systemName: "arrow.up.right.square")
-                        .font(.body)
-                        .foregroundStyle(.blue)
-                }
-                .help("Open billing dashboard in browser")
-            }
-
-            Button(action: onRefresh) {
-                Image(systemName: "arrow.clockwise")
-                    .font(.body)
-            }
-            .buttonStyle(.borderless)
-            .disabled(isLoading)
-            .help("Refresh balance")
-        }
-        .padding(.vertical, 4)
-    }
-}
-
 // MARK: - Usage Row (providers requiring admin keys)
 
 struct UsageRow: View {
@@ -347,7 +246,7 @@ struct UsageRow: View {
         switch policy.scope {
         case "openai": "Requires an Admin API key (sk-admin-...) from platform.openai.com"
         case "xai": "Requires a Management API key from console.x.ai"
-        case "anthropic", "claude": "Requires an Admin API key (sk-ant-admin-...) from console.anthropic.com"
+        case "anthropic": "Requires an Admin API key (sk-ant-admin-...) from console.anthropic.com"
         case "openrouter": "Requires a Management API key from openrouter.ai"
         default: "Add an admin/management API key for billing queries"
         }
@@ -474,7 +373,7 @@ struct AdminKeySheet: View {
             "OpenAI requires a separate Admin API key to check usage. Create one at platform.openai.com/api-keys with admin permissions. It starts with sk-admin-..."
         case "xai":
             "xAI requires a separate Management API key to check your prepaid balance. Get one from console.x.ai under API Management."
-        case "anthropic", "claude":
+        case "anthropic":
             "Anthropic requires a separate Admin API key to check usage. Create one at console.anthropic.com/settings/keys. It starts with sk-ant-admin-..."
         case "openrouter":
             "OpenRouter requires a Management API key to check credits. Get one from openrouter.ai/settings/keys."
@@ -487,7 +386,7 @@ struct AdminKeySheet: View {
         switch policy.scope {
         case "openai": "sk-admin-..."
         case "xai": "Management API key"
-        case "anthropic", "claude": "sk-ant-admin-..."
+        case "anthropic": "sk-ant-admin-..."
         case "openrouter": "Management API key"
         default: "Admin API key"
         }

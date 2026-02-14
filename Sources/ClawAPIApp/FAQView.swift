@@ -28,121 +28,109 @@ struct FAQView: View {
                 VStack(alignment: .leading, spacing: 28) {
 
                     // ── Walkthrough ──
-                    FAQSection(icon: "sparkles", color: .purple, title: "Walkthrough: Connect OpenClaw to OpenAI") {
+                    FAQSection(icon: "sparkles", color: .purple, title: "Quick Start") {
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("This example shows how to let OpenClaw call the OpenAI API — without OpenClaw ever seeing your API key.")
-                                .font(.callout)
+                            Text("Add a provider, pick a model, and you're done.")
+                                .font(.body)
                                 .foregroundStyle(.secondary)
 
-                            FAQSubsection(title: "1. Select OpenAI and paste your key") {
-                                Text("Click + in the toolbar, select OpenAI from the grid, and paste your API key (sk-...). Domains and settings are filled in automatically. That's the only step.")
+                            FAQSubsection(title: "1. Add a provider") {
+                                Text("Click + in the toolbar. Pick a provider and paste your API key.")
                             }
 
-                            FAQSubsection(title: "2. OpenClaw can now use OpenAI") {
-                                Text("ClawAPI automatically registers itself with OpenClaw. When OpenClaw needs to call OpenAI, it discovers ClawAPI and uses it to inject your API key. OpenClaw never sees the key — only the API response.")
+                            FAQSubsection(title: "2. Pick a model") {
+                                Text("Use the dropdown next to the provider name to choose a sub-model (e.g. GPT-4.1, Claude Sonnet 4.5, Grok 4).")
                             }
 
-                            FAQSubsection(title: "3. Check Activity") {
-                                Text("Open the Activity tab to see request counts and recent activity. Click any card to jump to the relevant section.")
+                            FAQSubsection(title: "3. That's it") {
+                                Text("ClawAPI syncs your choice to OpenClaw automatically. Your key is in the Keychain, your model is set.")
                             }
                         }
                     }
 
                     Divider()
 
-                    // ── Enable / Disable — Save Costs ──
-
-                    FAQSection(icon: "power.circle.fill", color: .green, title: "Enable & Disable Providers — Save Costs") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Every provider row has a prominent ENABLED / DISABLED button. Use it to instantly toggle whether OpenClaw can use that provider.")
-                            Text("**Why this matters:** Disabling a provider you're not actively using prevents accidental API calls that rack up costs. Re-enabling takes one click — no need to re-enter credentials or reconfigure anything.")
-                            Text("**Tip:** Disable expensive providers (like GPT-4, Claude, etc.) when you're not using them, and only enable the ones you need for your current task. This gives you fine-grained cost control without deleting anything.")
+                    // ── Tabs ──
+                    FAQSection(icon: "rectangle.on.rectangle", color: .blue, title: "What the Tabs Do") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            FAQSubsection(title: "Providers") {
+                                Text("Your API providers. Pick sub-models, enable/disable providers, drag to reorder priority. The #1 provider is what OpenClaw uses first.")
+                            }
+                            FAQSubsection(title: "Sync") {
+                                Text("Shows what's synced to OpenClaw right now — active model, fallbacks, and provider config.")
+                            }
+                            FAQSubsection(title: "Activity") {
+                                Text("Request counts and recent activity. Click any card to jump to details.")
+                            }
+                            FAQSubsection(title: "Logs") {
+                                Text("Full history of every API request. Filter by result or search by provider.")
+                            }
+                            FAQSubsection(title: "Usage") {
+                                Text("Check your credit balance and spending for providers that support it.")
+                            }
                         }
                     }
 
                     Divider()
 
-                    // ── Provider Priority ──
-
-                    FAQSection(icon: "list.number", color: .blue, title: "Provider Priority — Set Your MAIN Provider") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Drag provider rows to reorder them. The provider at the top is your #1 MAIN provider — it's the one OpenClaw will prefer to use first.")
-                            Text("**How it works:** OpenClaw sees the priority order when it calls clawapi_list_scopes. The #1 MAIN provider is listed first, followed by #2, #3, and so on. This lets OpenClaw know which provider you prefer for each task.")
-                            Text("**Tip:** Put your fastest or cheapest provider at #1, and keep premium providers lower in the list as fallbacks.")
-                        }
+                    // ── Model Selection ──
+                    FAQSection(icon: "cpu.fill", color: .green, title: "How do I switch models?") {
+                        Text("Each provider row has a dropdown showing the current model. Click it to pick a different one. Your choice syncs to OpenClaw instantly — no config editing needed.")
                     }
 
-                    Divider()
-
-                    // ── Best For Tags ──
-
-                    FAQSection(icon: "tag.fill", color: .purple, title: "\"Best For\" Tags — Guide OpenClaw to the Right Provider") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Each provider can be tagged with what it's best at: coding, research, chat, analysis, images, audio, or any custom tag you create.")
-                            Text("**How it works:** When OpenClaw calls clawapi_list_scopes, it sees each provider's tags. This lets OpenClaw pick the right provider for the task — e.g., use Anthropic for coding, Perplexity for research, ElevenLabs for audio.")
-                            Text("**Setting tags:** Click + to add a provider — suggested tags are pre-filled based on the service. Open Advanced Settings to customize them. You can also add custom tags for your own workflows.")
-                            Text("**Tip:** Combined with priority ordering, tags give you powerful routing control. Set your #1 MAIN provider for general use, and tag specialized providers for specific tasks.")
-                        }
-                    }
-
-                    Divider()
-
-                    // ── General FAQs ──
-
-                    FAQSection(icon: "lock.shield", color: .blue, title: "Does OpenClaw ever see my credentials?") {
-                        Text("No. ClawAPI is a secure tool that injects your credentials into requests server-side and returns only the API response. OpenClaw sends unauthenticated requests to ClawAPI locally. Your passwords and API keys never leave ClawAPI.")
-                    }
-
-                    FAQSection(icon: "key.fill", color: .green, title: "Where are my credentials stored?") {
-                        Text("In the macOS Keychain, encrypted at rest by macOS and protected by your login. ClawAPI's data files only store metadata (which providers you've connected) — never your actual passwords or keys. No one with just file access can see or misuse your credentials.")
-                    }
-
-                    FAQSection(icon: "arrow.triangle.2.circlepath", color: .orange, title: "How do I change a password or rotate a key?") {
-                        Text("In the Providers tab, right-click the provider row and choose \"Delete Provider\". Re-add the provider with the new credentials. The old credentials are removed from Keychain when you delete.")
-                    }
-
-                    FAQSection(icon: "globe", color: .teal, title: "Can I restrict which domains are allowed?") {
-                        Text("Yes. Each provider has an allowed domains list. If OpenClaw tries to send a request to a domain that isn't listed, the request is denied and logged.")
-                    }
-
-                    FAQSection(icon: "puzzlepiece.extension", color: .cyan, title: "How does OpenClaw connect to ClawAPI?") {
+                    // ── Save Money ──
+                    FAQSection(icon: "dollarsign.circle.fill", color: .orange, title: "How do I save money?") {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("ClawAPI automatically registers itself with OpenClaw through MCP (Model Context Protocol). No manual setup needed — just open ClawAPI and it handles the rest.")
-                            Text("ClawAPI exposes three tools that OpenClaw discovers automatically:")
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("• **clawapi_proxy** — forward an HTTP request with automatic credential injection")
-                                Text("• **clawapi_list_scopes** — list available providers")
-                                Text("• **clawapi_health** — check ClawAPI status")
-                            }
-                            Text("OpenClaw launches ClawAPI on demand whenever it needs to call an API — no need to start anything manually.")
+                            Text("Switch to a cheaper model for everyday tasks — you don't always need the most expensive one. Use the model dropdown to pick a smaller, faster model.")
+                            Text("Disable providers you're not using — click the ENABLED button to toggle them off. No more surprise charges.")
                         }
                     }
 
-                    FAQSection(icon: "person.2", color: .mint, title: "Can other agents besides OpenClaw use ClawAPI?") {
-                        Text("Yes. Any MCP-compatible agent can connect via MCPorter, and any agent that can send HTTP requests to localhost can use ClawAPI directly. Each request is logged individually with the scope and target URL.")
+                    // ── Priority ──
+                    FAQSection(icon: "list.number", color: .blue, title: "What does provider priority do?") {
+                        Text("Drag rows to reorder. The #1 provider is what OpenClaw prefers. Put your cheapest or fastest provider at the top, keep premium ones as fallbacks.")
                     }
 
-                    FAQSection(icon: "pause.circle", color: .purple, title: "How do I stop OpenClaw from accessing a provider?") {
+                    Divider()
+
+                    // ── Keys ──
+                    FAQSection(icon: "key.fill", color: .green, title: "Where are my API keys stored?") {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Click the ENABLED button on the provider row to instantly disable it. OpenClaw will no longer be able to use that provider — and you save money on API calls you don't need.")
-                            Text("For more granular control, right-click the provider row to change the access mode to \"Require Approval\" (you approve each request manually), or \"Delete Provider\" to remove it entirely.")
-                            Text("A disabled provider keeps its credentials and settings. Re-enable it anytime with one click.")
+                            Text("Your primary copy is in the macOS Keychain, encrypted by macOS and protected by your login password. You can't lose them — even if you delete ClawAPI's data files, the Keychain keeps your keys safe.")
+                            Text("When you enable a provider, ClawAPI also writes the key into OpenClaw's auth-profiles.json so OpenClaw can use it. If you disable or delete a provider, the key is removed from that file.")
                         }
+                    }
+
+                    FAQSection(icon: "arrow.triangle.2.circlepath", color: .orange, title: "How do I change or rotate a key?") {
+                        Text("Delete the provider (right-click the row) and re-add it with the new key. The old key is removed from both the Keychain and OpenClaw's config.")
+                    }
+
+                    // ── Local Providers ──
+                    FAQSection(icon: "desktopcomputer", color: .teal, title: "Can I use Ollama or other local models?") {
+                        Text("Yes. Add Ollama from the provider list — no API key needed. ClawAPI detects your locally running models automatically.")
+                    }
+
+                    // ── How Sync Works ──
+                    FAQSection(icon: "puzzlepiece.extension", color: .cyan, title: "How does ClawAPI talk to OpenClaw?") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("ClawAPI writes your API keys into OpenClaw's auth-profiles.json and sets the active model in openclaw.json. OpenClaw reads these files directly — it uses your keys natively.")
+                            Text("ClawAPI also registers itself via MCP so OpenClaw can launch it on demand.")
+                        }
+                    }
+
+                    FAQSection(icon: "pause.circle", color: .purple, title: "How do I stop OpenClaw from using a provider?") {
+                        Text("Click the ENABLED button on the provider row to disable it. One click. Re-enable anytime — your key and settings are kept.")
                     }
 
                     FAQSection(icon: "terminal", color: .indigo, title: "Do I need to start anything manually?") {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("No. OpenClaw launches ClawAPI automatically whenever it needs to call an API. Just keep the ClawAPI app installed — everything else is handled for you.")
-                            Text("Advanced users can also run a standalone HTTP server:")
-                            CodeBlock("clawapi-daemon proxy")
-                            Text("This listens on port 9090 with /proxy and /mcp endpoints.")
-                        }
+                        Text("No. OpenClaw launches ClawAPI automatically when needed. Just keep it installed.")
                     }
 
-                    FAQSection(icon: "doc.text", color: .brown, title: "Where are log files stored?") {
+                    FAQSection(icon: "doc.text", color: .brown, title: "Where is data stored?") {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("All data is in ~/Library/Application Support/ClawAPI/:")
-                            CodeBlock("policies.json  — your providers\naudit.json     — access log (shown in app)\npending.json   — pending requests\naudit.log      — full log (JSONL format)")
+                            Text("All config is in ~/Library/Application Support/ClawAPI/:")
+                            CodeBlock("policies.json  — your providers\naudit.json     — access log\npending.json   — pending requests")
+                            Text("API keys are in the macOS Keychain. Enabled providers also have their key in OpenClaw's auth-profiles.json for direct access.")
                         }
                     }
 
@@ -150,10 +138,12 @@ struct FAQView: View {
 
                     // ── Support Development ──
                     FAQSection(icon: "heart.fill", color: .red, title: "Support Development") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("ClawAPI is free and open. If you'd like to support its development, contributions of any amount are welcome:")
-                            CodeBlock("bc1qzu287ld4rskeqwcng7t3ql8mw0z73kw7trcmes")
-                            Text("Thank you for helping keep ClawAPI alive!")
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("ClawAPI is free and open. If you'd like to support its development:")
+                            HStack(spacing: 12) {
+                                BitcoinLogo(size: 32)
+                                CodeBlock("bc1qzu287ld4rskeqwcng7t3ql8mw0z73kw7trcmes")
+                            }
                         }
                     }
 
@@ -165,7 +155,7 @@ struct FAQView: View {
                             .font(.headline)
                             .foregroundStyle(.gray)
                         Text("ClawAPI is provided as-is, without warranty of any kind, express or implied. The authors assume no liability for damages arising from its use. You are solely responsible for the credentials you store, the providers you connect, and any actions taken through ClawAPI. By using ClawAPI, you acknowledge that you do so entirely at your own risk.")
-                            .font(.callout)
+                            .font(.body)
                             .foregroundStyle(.secondary)
                     }
 
@@ -190,7 +180,7 @@ struct FAQView: View {
             }
             .padding()
         }
-        .frame(width: 600, height: 660)
+        .frame(width: 600, height: 700)
     }
 }
 
@@ -208,7 +198,7 @@ private struct FAQSection<Content: View>: View {
                 .font(.headline)
                 .foregroundStyle(color)
             content
-                .font(.callout)
+                .font(.body)
                 .foregroundStyle(.secondary)
         }
     }
@@ -223,11 +213,11 @@ private struct FAQSubsection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.subheadline)
+                .font(.body)
                 .fontWeight(.semibold)
                 .foregroundStyle(.primary)
             content
-                .font(.caption)
+                .font(.callout)
                 .foregroundStyle(.secondary)
         }
         .padding(.leading, 4)
@@ -245,9 +235,26 @@ private struct CodeBlock: View {
 
     var body: some View {
         Text(text)
-            .font(.system(.caption, design: .monospaced))
+            .font(.system(.callout, design: .monospaced))
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+// MARK: - Bitcoin Logo
+
+struct BitcoinLogo: View {
+    var size: CGFloat = 40
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color(red: 0.96, green: 0.66, blue: 0.10))
+            Text("₿")
+                .font(.system(size: size * 0.55, weight: .bold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: size, height: size)
     }
 }

@@ -35,33 +35,23 @@ public enum MockData {
             createdAt: Date().addingTimeInterval(-86400 * 15)
         ),
         ScopePolicy(
-            serviceName: "GitHub",
-            scope: "github",
-            allowedDomains: ["api.github.com", "github.com"],
-            approvalMode: .auto,
-            hasSecret: true,
-            priority: 4,
-            preferredFor: ["coding"],
-            createdAt: Date().addingTimeInterval(-86400 * 10)
-        ),
-        ScopePolicy(
-            serviceName: "Perplexity",
-            scope: "perplexity",
-            allowedDomains: ["api.perplexity.ai"],
-            approvalMode: .auto,
-            hasSecret: true,
-            priority: 5,
-            preferredFor: ["research"],
-            createdAt: Date().addingTimeInterval(-86400 * 7)
-        ),
-        ScopePolicy(
             serviceName: "Groq",
             scope: "groq",
             allowedDomains: ["api.groq.com"],
             approvalMode: .auto,
+            hasSecret: true,
+            priority: 4,
+            preferredFor: ["coding", "chat"],
+            createdAt: Date().addingTimeInterval(-86400 * 10)
+        ),
+        ScopePolicy(
+            serviceName: "Mistral",
+            scope: "mistral",
+            allowedDomains: ["api.mistral.ai"],
+            approvalMode: .auto,
             hasSecret: false,
             isEnabled: false,
-            priority: 6,
+            priority: 5,
             preferredFor: ["coding", "chat"],
             createdAt: Date().addingTimeInterval(-86400 * 5)
         ),
@@ -84,16 +74,9 @@ public enum MockData {
         ),
         AuditEntry(
             timestamp: Date().addingTimeInterval(-10800),
-            scope: "github",
-            requestingHost: "api.github.com",
-            reason: "Fetch repository list",
-            result: .approved
-        ),
-        AuditEntry(
-            timestamp: Date().addingTimeInterval(-12000),
-            scope: "perplexity",
-            requestingHost: "api.perplexity.ai",
-            reason: "Web search — latest Swift concurrency docs",
+            scope: "groq",
+            requestingHost: "api.groq.com",
+            reason: "Fast inference request",
             result: .approved
         ),
         AuditEntry(
@@ -106,9 +89,9 @@ public enum MockData {
         ),
         AuditEntry(
             timestamp: Date().addingTimeInterval(-86400),
-            scope: "groq",
-            requestingHost: "api.groq.com",
-            reason: "Fast inference",
+            scope: "mistral",
+            requestingHost: "api.mistral.ai",
+            reason: "Code completion",
             result: .error,
             detail: "No credential stored"
         ),
@@ -116,9 +99,9 @@ public enum MockData {
 
     public static let pendingRequests: [PendingRequest] = [
         PendingRequest(
-            scope: "github",
-            requestingHost: "api.github.com",
-            reason: "Create release tag v2.1.0",
+            scope: "openrouter",
+            requestingHost: "openrouter.ai",
+            reason: "Multi-model inference request",
             requestedAt: Date().addingTimeInterval(-120)
         ),
     ]

@@ -50,13 +50,13 @@ private struct WelcomePage1: View {
                     Text("ClawAPI")
                         .font(.system(size: 42, weight: .bold, design: .rounded))
 
-                    Text("Secure API Tool for OpenClaw")
+                    Text("Model Switcher & Key Vault for OpenClaw")
                         .font(.title3)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
 
-                    Text("OpenClaw needs to call APIs — but it should never see your passwords or API keys. ClawAPI is a secure tool that injects your credentials into requests server-side, so OpenClaw only sees the API response.")
-                        .font(.callout)
+                    Text("Pick your AI models, save money by switching to cheaper ones when you can, and keep your API keys safe in the macOS Keychain.")
+                        .font(.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 560)
@@ -67,28 +67,28 @@ private struct WelcomePage1: View {
                 // Feature cards
                 VStack(alignment: .leading, spacing: 20) {
                     FeatureRow(
-                        icon: "lock.shield.fill",
+                        icon: "cpu.fill",
                         color: .blue,
-                        title: "Zero Credential Exposure",
-                        description: "OpenClaw never sees your passwords or API keys. ClawAPI injects them server-side and returns only the API response."
+                        title: "Switch Models Instantly",
+                        description: "Pick any sub-model from any provider. Your choice syncs to OpenClaw automatically."
                     )
                     FeatureRow(
                         icon: "key.fill",
                         color: .green,
-                        title: "Encrypted in the Keychain",
-                        description: "Your credentials are encrypted in the macOS Keychain. No one with just file access can see or misuse them."
+                        title: "API Keys in the Keychain",
+                        description: "Your keys are stored in the macOS Keychain, encrypted at rest. You can't lose them."
                     )
                     FeatureRow(
-                        icon: "list.bullet.rectangle.fill",
+                        icon: "dollarsign.circle.fill",
                         color: .orange,
-                        title: "Full Audit Trail",
-                        description: "Every proxied request is logged. See what was accessed, when, and why."
+                        title: "Save Money",
+                        description: "Switch to a cheaper model for everyday tasks. Disable providers you're not using. Only pay for what you need."
                     )
                     FeatureRow(
-                        icon: "pause.circle.fill",
+                        icon: "arrow.triangle.2.circlepath",
                         color: .purple,
-                        title: "Pause or Remove Anytime",
-                        description: "Change access mode or delete any provider from the Providers tab. OpenClaw instantly loses access."
+                        title: "Auto-Sync to OpenClaw",
+                        description: "Models, keys, and priorities sync to OpenClaw's config. No manual editing."
                     )
                 }
                 .frame(maxWidth: 560)
@@ -139,8 +139,8 @@ private struct WelcomePage2: View {
                 .font(.title2)
                 .fontWeight(.semibold)
 
-            Text("Example: let OpenClaw call the OpenAI API for you")
-                .font(.callout)
+            Text("Three steps — that's it")
+                .font(.body)
                 .foregroundStyle(.secondary)
                 .padding(.top, 4)
                 .padding(.bottom, 28)
@@ -151,37 +151,29 @@ private struct WelcomePage2: View {
                     icon: "plus.circle.fill",
                     color: .blue,
                     title: "Add a Provider",
-                    example: "Click + and select OpenAI. Paste your API key. That's it."
+                    example: "Click + and pick a provider (OpenAI, Claude, Groq, etc.). Paste your API key."
                 )
 
                 SimpleStep(
                     number: 2,
-                    icon: "key.fill",
+                    icon: "cpu.fill",
                     color: .green,
-                    title: "Credential Stored Securely",
-                    example: "Your API key is encrypted in the macOS Keychain — never stored as plain text."
+                    title: "Pick Your Model",
+                    example: "Use the dropdown next to each provider to choose a sub-model. It becomes your active model instantly."
                 )
 
                 SimpleStep(
                     number: 3,
-                    icon: "puzzlepiece.extension.fill",
+                    icon: "checkmark.circle.fill",
                     color: .orange,
-                    title: "OpenClaw Finds It Automatically",
-                    example: "ClawAPI registers itself with OpenClaw — no setup needed. When OpenClaw needs to call an API, it discovers ClawAPI and uses it to inject your credentials. OpenClaw never sees the key."
-                )
-
-                SimpleStep(
-                    number: 4,
-                    icon: "eye.fill",
-                    color: .purple,
-                    title: "You Stay in Control",
-                    example: "Every proxied request is logged. Change access mode or delete any provider from the Providers tab."
+                    title: "Done — OpenClaw Uses It",
+                    example: "ClawAPI syncs everything to OpenClaw automatically. Your key is safe in the Keychain, your model is set, and you're ready to go."
                 )
             }
             .frame(maxWidth: 480)
 
-            Text("Works for any API provider: OpenAI, GitHub, Stripe, and any provider with an API key or token.")
-                .font(.caption)
+            Text("Supports 15+ providers including OpenAI, Anthropic, xAI, Groq, Mistral, and local models like Ollama.")
+                .font(.callout)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
                 .padding(.top, 16)
@@ -214,12 +206,44 @@ private struct WelcomePage2: View {
             }
 
             Text("Reopen anytime from the house icon, or check the FAQ from the book icon.")
-                .font(.caption)
+                .font(.callout)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
                 .padding(.top, 10)
 
-            Spacer().frame(height: 36)
+            Spacer().frame(height: 16)
+
+            // Bitcoin donation
+            VStack(spacing: 6) {
+                BitcoinLogo(size: 44)
+                Text("ClawAPI is free — support is much appreciated")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Text("bc1qzu287ld4rskeqwcng7t3ql8mw0z73kw7trcmes")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .textSelection(.enabled)
+            }
+            .padding(.vertical, 10)
+
+            Spacer().frame(height: 12)
+
+            Button {
+                onGetStarted()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "eye.slash")
+                    Text("Never show the Start Screens again")
+                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(.fill.tertiary, in: Capsule())
+            }
+            .buttonStyle(.plain)
+
+            Spacer().frame(height: 24)
         }
         .frame(maxWidth: .infinity)
     }
@@ -237,10 +261,10 @@ private struct SimpleStep: View {
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             Text("\(number)")
-                .font(.caption2)
+                .font(.caption)
                 .fontWeight(.bold)
                 .foregroundStyle(.white)
-                .frame(width: 24, height: 24)
+                .frame(width: 26, height: 26)
                 .background(color, in: Circle())
 
             VStack(alignment: .leading, spacing: 4) {
@@ -248,7 +272,7 @@ private struct SimpleStep: View {
                     .font(.headline)
                     .foregroundStyle(color)
                 Text(example)
-                    .font(.callout)
+                    .font(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -272,13 +296,13 @@ private struct FeatureRow: View {
                 .frame(width: 36, height: 36)
                 .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.subheadline)
+                    .font(.body)
                     .fontWeight(.semibold)
                 Text(description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.body)
+                    .foregroundStyle(.primary.opacity(0.65))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

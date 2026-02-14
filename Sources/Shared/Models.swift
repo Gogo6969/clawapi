@@ -60,6 +60,9 @@ public struct ScopePolicy: Identifiable, Codable, Sendable, Hashable {
     public var createdAt: Date
     public var lastUsedAt: Date?
     public var hasAdminSecret: Bool
+    /// The user-selected sub-model for this provider (e.g. "openai/gpt-5.1").
+    /// When nil, the default model from scopeToDefaultModel is used.
+    public var selectedModel: String?
 
     public init(
         id: UUID = UUID(),
@@ -75,7 +78,8 @@ public struct ScopePolicy: Identifiable, Codable, Sendable, Hashable {
         preferredFor: [String] = [],
         createdAt: Date = Date(),
         lastUsedAt: Date? = nil,
-        hasAdminSecret: Bool = false
+        hasAdminSecret: Bool = false,
+        selectedModel: String? = nil
     ) {
         self.id = id
         self.serviceName = serviceName
@@ -91,6 +95,7 @@ public struct ScopePolicy: Identifiable, Codable, Sendable, Hashable {
         self.createdAt = createdAt
         self.lastUsedAt = lastUsedAt
         self.hasAdminSecret = hasAdminSecret
+        self.selectedModel = selectedModel
     }
 
     // Backward-compatible decoding: existing policies.json without new fields defaults gracefully
@@ -110,6 +115,7 @@ public struct ScopePolicy: Identifiable, Codable, Sendable, Hashable {
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         lastUsedAt = try container.decodeIfPresent(Date.self, forKey: .lastUsedAt)
         hasAdminSecret = try container.decodeIfPresent(Bool.self, forKey: .hasAdminSecret) ?? false
+        selectedModel = try container.decodeIfPresent(String.self, forKey: .selectedModel)
     }
 }
 

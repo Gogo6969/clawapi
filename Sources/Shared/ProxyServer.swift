@@ -153,6 +153,8 @@ public final class ProxyServer: Sendable {
             return
         }
 
+        logger.info("Request: \(httpMethod) \(httpPath)")
+
         // Health check endpoint (fast path — no async needed)
         if httpPath == "/health" {
             let json = "{\"status\":\"ok\",\"port\":\(port)}"
@@ -420,43 +422,61 @@ public final class ProxyServer: Sendable {
         let flags = fcntl(socket, F_GETFL)
         _ = fcntl(socket, F_SETFL, flags & ~O_NONBLOCK)
 
-        var buffer = [UInt8](repeating: 0, count: 65536)
+        var buffer = [UInt8](repeating: 0, count: 131072)
         var accumulated = Data()
+        var contentLength: Int? = nil
+        var bodyStartOffset: Int? = nil
 
         // Read until we have complete headers + body
         while true {
             let bytesRead = recv(socket, &buffer, buffer.count, 0)
-            guard bytesRead > 0 else { break }
+            if bytesRead <= 0 { break }
             accumulated.append(contentsOf: buffer[0..<bytesRead])
 
-            // Check if we have the full request
-            if let str = String(data: accumulated, encoding: .utf8) {
-                if let headerEnd = str.range(of: "\r\n\r\n") {
-                    // Check Content-Length to see if we need more body data
-                    let headerPart = String(str[str.startIndex..<headerEnd.lowerBound])
-                    if let clRange = headerPart.range(of: "Content-Length: ", options: .caseInsensitive) {
-                        let afterCL = headerPart[clRange.upperBound...]
-                        if let nlRange = afterCL.range(of: "\r\n") {
-                            let clValue = String(afterCL[afterCL.startIndex..<nlRange.lowerBound])
-                            if let contentLength = Int(clValue) {
-                                let bodyStart = str[headerEnd.upperBound...]
-                                if bodyStart.utf8.count >= contentLength {
-                                    return str
+            // Find header/body boundary if not yet found
+            if bodyStartOffset == nil {
+                // Search for \r\n\r\n in the accumulated bytes
+                for i in 0..<(accumulated.count - 3) {
+                    if accumulated[i] == 0x0D && accumulated[i+1] == 0x0A &&
+                       accumulated[i+2] == 0x0D && accumulated[i+3] == 0x0A {
+                        bodyStartOffset = i + 4
+                        // Parse Content-Length from header bytes
+                        if let headerStr = String(data: accumulated[0..<i], encoding: .utf8) {
+                            // Match "content-length:" with optional space
+                            if let clRange = headerStr.range(of: "content-length:", options: .caseInsensitive) {
+                                var afterCL = headerStr[clRange.upperBound...]
+                                // Skip optional whitespace
+                                while afterCL.first == " " || afterCL.first == "\t" {
+                                    afterCL = afterCL.dropFirst()
                                 }
-                                // Need more data, continue reading
-                                continue
+                                if let nlRange = afterCL.range(of: "\r\n") {
+                                    contentLength = Int(String(afterCL[afterCL.startIndex..<nlRange.lowerBound]).trimmingCharacters(in: .whitespaces))
+                                } else {
+                                    // Last header line might not have \r\n
+                                    contentLength = Int(String(afterCL).trimmingCharacters(in: .whitespacesAndNewlines))
+                                }
                             }
                         }
+                        break
                     }
-                    // No Content-Length or zero-length body
-                    return str
+                }
+            }
+
+            // Check if we have enough data
+            if let bodyStart = bodyStartOffset {
+                let bodyLen = accumulated.count - bodyStart
+                if let cl = contentLength {
+                    if bodyLen >= cl {
+                        return String(data: accumulated, encoding: .utf8)
+                    }
+                } else {
+                    // No Content-Length header — return what we have
+                    return String(data: accumulated, encoding: .utf8)
                 }
             }
 
             // Safety: don't read forever
-            if accumulated.count > 1_048_576 { // 1MB max
-                break
-            }
+            if accumulated.count > 2_097_152 { break }
         }
 
         return accumulated.isEmpty ? nil : String(data: accumulated, encoding: .utf8)
@@ -525,6 +545,7 @@ public final class ProxyServer: Sendable {
         let json = "{\"error\":\"\(message)\",\"statusCode\":\(status)}"
         sendHTTPResponse(to: socket, status: status, contentType: "application/json", body: json)
     }
+
 }
 
 // MARK: - Errors

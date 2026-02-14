@@ -83,11 +83,9 @@ func handleProxy(port: UInt16) async {
 
     sigintSource.setEventHandler {
         print("\nShutting down...")
-        server.stop()
         exit(0)
     }
     sigtermSource.setEventHandler {
-        server.stop()
         exit(0)
     }
     sigintSource.resume()

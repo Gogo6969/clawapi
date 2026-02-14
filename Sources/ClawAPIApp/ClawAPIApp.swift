@@ -6,6 +6,7 @@ struct ClawAPIApp: App {
     @StateObject private var store = PolicyStore()
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
     @AppStorage("skippedGetStarted") private var skippedGetStarted = false
+    @State private var showOpenClawMissing = false
 
     var body: some Scene {
         Window("ClawAPI", id: "main") {
@@ -27,9 +28,20 @@ struct ClawAPIApp: App {
                         .frame(minWidth: 800, minHeight: 600)
                 }
             }
+            .alert("OpenClaw Not Found", isPresented: $showOpenClawMissing) {
+                Button("OK") { }
+            } message: {
+                Text("ClawAPI only works as intended with OpenClaw installed.\n\nInstall OpenClaw first, then relaunch ClawAPI.")
+            }
             .task {
                 // Register ClawAPI with MCPorter on every launch (silent, idempotent)
                 MCPorterRegistration.ensureRegistered()
+
+                // Warn if OpenClaw is not installed
+                if !OpenClawDetection.isInstalled {
+                    try? await Task.sleep(for: .seconds(0.5))
+                    showOpenClawMissing = true
+                }
 
                 // Screenshot mode: render all pages to PNG and exit
                 if ScreenshotMode.isEnabled {
@@ -39,6 +51,7 @@ struct ClawAPIApp: App {
             }
         }
         .windowStyle(.titleBar)
+        .windowResizability(.contentSize)
         .defaultSize(width: 1000, height: 700)
     }
 }

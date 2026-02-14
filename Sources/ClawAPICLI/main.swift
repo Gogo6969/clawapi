@@ -53,6 +53,9 @@ func run() async {
         let limit = Int(parseFlag("--limit", from: args) ?? "20") ?? 20
         await showLogs(limit: limit)
 
+    case "sync-openclaw":
+        await syncOpenClaw()
+
     case "help", "--help", "-h":
         printUsage()
 
@@ -167,6 +170,17 @@ func showLogs(limit: Int) async {
     for e in entries {
         let ts = ISO8601DateFormatter().string(from: e.timestamp)
         print("\(ts) [\(e.result.rawValue)] \(e.scope) — \(e.reason)")
+    }
+}
+
+@MainActor
+func syncOpenClaw() async {
+    let store = PolicyStore()
+    let keychain = KeychainService()
+    OpenClawConfig.syncToOpenClaw(policies: store.policies, keychain: keychain)
+    print("Synced \(store.policies.filter { $0.isEnabled && $0.hasSecret }.count) providers to OpenClaw")
+    if let model = OpenClawConfig.currentModel() {
+        print("Primary model: \(model)")
     }
 }
 

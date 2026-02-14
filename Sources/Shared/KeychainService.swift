@@ -4,6 +4,32 @@ import OSLog
 
 private let logger = Logger(subsystem: "com.clawapi", category: "Keychain")
 
+/// In-memory cache for Keychain reads to avoid repeated macOS permission prompts.
+/// Keys are cached after the first successful read and invalidated on save/delete.
+private final class KeychainCache: @unchecked Sendable {
+    static let shared = KeychainCache()
+    private var cache: [String: Data] = [:]
+    private let lock = NSLock()
+
+    func get(_ scope: String) -> Data? {
+        lock.lock()
+        defer { lock.unlock() }
+        return cache[scope]
+    }
+
+    func set(_ scope: String, data: Data) {
+        lock.lock()
+        defer { lock.unlock() }
+        cache[scope] = data
+    }
+
+    func remove(_ scope: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        cache.removeValue(forKey: scope)
+    }
+}
+
 public struct KeychainService: Sendable {
     private let accessGroup: String
 
@@ -34,6 +60,8 @@ public struct KeychainService: Sendable {
             logger.error("Keychain save failed for scope '\(scope)': \(status)")
             throw KeychainError.saveFailed(status)
         }
+        // Update in-memory cache so subsequent reads don't trigger OS prompts
+        KeychainCache.shared.set(scope, data: secret)
         logger.info("Saved secret for scope '\(scope)'")
     }
 
@@ -47,6 +75,11 @@ public struct KeychainService: Sendable {
     // MARK: - Retrieve
 
     public func retrieve(forScope scope: String) throws -> Data {
+        // Check in-memory cache first to avoid repeated OS keychain prompts
+        if let cached = KeychainCache.shared.get(scope) {
+            return cached
+        }
+
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "ClawAPI",
@@ -69,6 +102,8 @@ public struct KeychainService: Sendable {
             logger.error("Keychain retrieve failed for scope '\(scope)': \(status)")
             throw KeychainError.retrieveFailed(status)
         }
+        // Cache for future reads
+        KeychainCache.shared.set(scope, data: data)
         return data
     }
 
@@ -99,7 +134,45 @@ public struct KeychainService: Sendable {
             logger.error("Keychain delete failed for scope '\(scope)': \(status)")
             throw KeychainError.deleteFailed(status)
         }
+        // Invalidate in-memory cache
+        KeychainCache.shared.remove(scope)
         logger.info("Deleted secret for scope '\(scope)'")
+    }
+
+    // MARK: - Batch preload
+
+    /// Read ALL ClawAPI secrets from the Keychain in a single query.
+    /// This triggers at most one macOS permission prompt instead of one per scope.
+    /// Results are cached for future individual reads.
+    public func preloadAll() {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "ClawAPI",
+            kSecReturnData as String: true,
+            kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+
+        #if !DEBUG
+        query[kSecAttrAccessGroup as String] = accessGroup
+        #endif
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        guard status == errSecSuccess, let items = result as? [[String: Any]] else {
+            if status != errSecItemNotFound {
+                logger.error("Keychain preloadAll failed: \(status)")
+            }
+            return
+        }
+
+        for item in items {
+            guard let account = item[kSecAttrAccount as String] as? String,
+                  let data = item[kSecValueData as String] as? Data else { continue }
+            KeychainCache.shared.set(account, data: data)
+        }
+        logger.info("Preloaded \(items.count) secrets from Keychain")
     }
 
     // MARK: - Check existence

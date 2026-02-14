@@ -167,6 +167,8 @@ struct ScopePolicyRow: View {
     let store: PolicyStore
     var onDelete: () -> Void
     @State private var showAdminKeySheet = false
+    /// Bumped when the model catalog loads asynchronously, forcing a re-render.
+    @State private var catalogGeneration = 0
 
     @ViewBuilder
     private var menuContent: some View {
@@ -248,6 +250,27 @@ struct ScopePolicyRow: View {
                         .foregroundStyle(.secondary)
                 }
                 HStack(spacing: 8) {
+                    // Model picker
+                    if !availableModels.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "cpu")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.secondary)
+                            Picker(selection: Binding(
+                                get: { currentModelId },
+                                set: { store.selectModel($0, for: policy) }
+                            )) {
+                                ForEach(availableModels) { model in
+                                    Text(model.name).tag(model.id)
+                                }
+                            } label: {
+                                EmptyView()
+                            }
+                            .pickerStyle(.menu)
+                            .fixedSize()
+                        }
+                    }
+
                     if policy.isEnabled {
                         Label(policy.approvalMode.rawValue.capitalized, systemImage: approvalModeIconName)
                             .font(.caption)
@@ -286,6 +309,10 @@ struct ScopePolicyRow: View {
                     Label("Secret stored", systemImage: "lock.fill")
                         .font(.caption)
                         .foregroundStyle(.green)
+                } else if isLocalProvider {
+                    Label("Local", systemImage: "desktopcomputer")
+                        .font(.caption)
+                        .foregroundStyle(.blue)
                 } else {
                     Label("No secret", systemImage: "lock.open")
                         .font(.caption)
@@ -312,8 +339,8 @@ struct ScopePolicyRow: View {
             .buttonStyle(.borderedProminent)
             .tint(policy.isEnabled ? .green : .red)
             .controlSize(.small)
-            .disabled(!policy.hasSecret)
-            .help(!policy.hasSecret
+            .disabled(!policy.hasSecret && !isLocalProvider)
+            .help(!policy.hasSecret && !isLocalProvider
                 ? "No secret stored — add an API key before enabling"
                 : policy.isEnabled
                     ? "Disable this provider — OpenClaw won't be able to use it"
@@ -353,6 +380,45 @@ struct ScopePolicyRow: View {
                 }
             )
         }
+        .onReceive(NotificationCenter.default.publisher(for: ServiceCatalog.catalogDidLoad)) { _ in
+            catalogGeneration += 1
+        }
+    }
+
+    /// Whether this provider is a local provider that doesn't need an API key (e.g. Ollama).
+    private var isLocalProvider: Bool {
+        !(ServiceCatalog.find(policy.scope)?.requiresKey ?? true)
+    }
+
+    // MARK: - Model helpers
+
+    private var availableModels: [ModelOption] {
+        // catalogGeneration dependency ensures SwiftUI re-evaluates after async fetch
+        _ = catalogGeneration
+        return ServiceCatalog.modelsForScope(policy.scope)
+    }
+
+    /// The model ID currently in effect (user-selected or default).
+    private var currentModelId: String {
+        if let selected = policy.selectedModel, !selected.isEmpty {
+            return selected
+        }
+        return availableModels.first(where: \.isDefault)?.id
+            ?? availableModels.first?.id
+            ?? ""
+    }
+
+    /// Display name for the current model.
+    private var currentModelName: String {
+        if let match = availableModels.first(where: { $0.id == currentModelId }) {
+            return match.name
+        }
+        // If the stored ID doesn't match any known model, show the raw ID
+        let id = currentModelId
+        if let slash = id.firstIndex(of: "/") {
+            return String(id[id.index(after: slash)...])
+        }
+        return id
     }
 
     // MARK: - Visual helpers

@@ -4,10 +4,10 @@ import Foundation
 /// Update these values for every release. `build-app.sh` extracts them to stamp Info.plist.
 public enum AppVersion {
     /// Semantic version string (major.minor.patch).
-    public static let current = "1.2.0"
+    public static let current = "1.3.0"
 
     /// Build number, incremented with each build.
-    public static let build = "3"
+    public static let build = "1"
 
     /// URL of the remote update manifest JSON (hosted on GitHub).
     /// Change this once the GitHub repo is created.

@@ -92,7 +92,8 @@ struct AddScopeSheet: View {
                 ))
 
             case .success:
-                SuccessView(serviceName: addedServiceName, isFirstProvider: isFirstProvider)
+                SuccessView(serviceName: addedServiceName, isFirstProvider: isFirstProvider,
+                            isLocal: !(selectedTemplate?.requiresKey ?? true))
                     .transition(.opacity)
             }
         }
@@ -419,32 +420,49 @@ private struct APIKeyEntryView: View {
                         }
                     }
 
-                    // API Key
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("API Key")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                    // API Key (hidden for local providers that don't need one)
+                    if selectedTemplate?.requiresKey ?? true {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("API Key")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
 
-                        HStack {
-                            if showSecret {
-                                TextField("API Key", text: $secret, prompt: Text(keyPlaceholder))
-                                    .textFieldStyle(.roundedBorder)
-                            } else {
-                                SecureField("API Key", text: $secret, prompt: Text(keyPlaceholder))
-                                    .textFieldStyle(.roundedBorder)
+                            HStack {
+                                if showSecret {
+                                    TextField("API Key", text: $secret, prompt: Text(keyPlaceholder))
+                                        .textFieldStyle(.roundedBorder)
+                                } else {
+                                    SecureField("API Key", text: $secret, prompt: Text(keyPlaceholder))
+                                        .textFieldStyle(.roundedBorder)
+                                }
+                                Button {
+                                    showSecret.toggle()
+                                } label: {
+                                    Image(systemName: showSecret ? "eye.slash" : "eye")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            Button {
-                                showSecret.toggle()
-                            } label: {
-                                Image(systemName: showSecret ? "eye.slash" : "eye")
+
+                            Text("Encrypted in the macOS Keychain. OpenClaw never sees it.")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    } else {
+                        HStack(spacing: 10) {
+                            Image(systemName: "desktopcomputer")
+                                .font(.title2)
+                                .foregroundStyle(.green)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Local Provider")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text("Runs on your machine — no API key needed.")
+                                    .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-                            .buttonStyle(.plain)
                         }
-
-                        Text("Encrypted in the macOS Keychain. OpenClaw never sees it.")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
+                        .padding(.vertical, 4)
                     }
 
                     // Advanced Settings
@@ -585,6 +603,7 @@ private struct APIKeyEntryView: View {
 private struct SuccessView: View {
     let serviceName: String
     let isFirstProvider: Bool
+    var isLocal: Bool = false
     @State private var animate = false
 
     var body: some View {
@@ -603,7 +622,7 @@ private struct SuccessView: View {
                 .fontWeight(.semibold)
                 .opacity(animate ? 1.0 : 0.0)
 
-            Text("Credentials stored in the macOS Keychain")
+            Text(isLocal ? "Local provider configured" : "Credentials stored in the macOS Keychain")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .opacity(animate ? 1.0 : 0.0)

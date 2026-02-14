@@ -43,6 +43,16 @@ cp "$SCRIPT_DIR/Support/ClawAPI.entitlements" "$APP_DIR/Contents/Resources/ClawA
 # Write PkgInfo
 echo -n "APPL????" > "$APP_DIR/Contents/PkgInfo"
 
+# Ad-hoc code sign with stable bundle identifier.
+# The --identifier flag ensures macOS Keychain recognizes the binary
+# as the same app across rebuilds, reducing repeated password prompts.
+echo "Code signing (ad-hoc)..."
+codesign --force --sign - --identifier "com.clawapi.app" \
+    "$APP_DIR/Contents/MacOS/ClawAPIDaemon"
+codesign --force --sign - --identifier "com.clawapi.app" \
+    "$APP_DIR/Contents/MacOS/ClawAPIApp"
+codesign --force --sign - --identifier "com.clawapi.app" "$APP_DIR"
+
 echo "Done: $APP_DIR"
 echo ""
 echo "Launch with:  open \"$APP_DIR\""

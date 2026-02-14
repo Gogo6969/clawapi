@@ -11,14 +11,38 @@ public struct ServiceTemplate: Sendable, Identifiable {
     public let customHeaderName: String?
     public let suggestedTags: [String]
     public let keyPlaceholder: String
+    /// Whether the provider requires an API key. False for local providers like Ollama.
+    public let requiresKey: Bool
+
+    public init(
+        name: String,
+        scope: String,
+        domains: [String],
+        credentialType: CredentialType,
+        customHeaderName: String?,
+        suggestedTags: [String],
+        keyPlaceholder: String,
+        requiresKey: Bool = true
+    ) {
+        self.name = name
+        self.scope = scope
+        self.domains = domains
+        self.credentialType = credentialType
+        self.customHeaderName = customHeaderName
+        self.suggestedTags = suggestedTags
+        self.keyPlaceholder = keyPlaceholder
+        self.requiresKey = requiresKey
+    }
 }
 
 /// Built-in catalog of known AI APIs and common services.
 /// Covers all providers that OpenClaw supports out of the box.
 public enum ServiceCatalog {
 
+    /// Only providers that exist in OpenClaw's model catalog.
+    /// Kept in sync with `openclaw models list --all --json` providers.
     public static let all: [ServiceTemplate] = [
-        // ── AI / LLM APIs ──
+        // ── AI / LLM APIs (matching OpenClaw providers) ──
         ServiceTemplate(
             name: "OpenAI",
             scope: "openai",
@@ -27,15 +51,6 @@ public enum ServiceCatalog {
             customHeaderName: nil,
             suggestedTags: ["coding", "chat", "general"],
             keyPlaceholder: "sk-..."
-        ),
-        ServiceTemplate(
-            name: "xAI (Grok)",
-            scope: "xai",
-            domains: ["api.x.ai"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["chat", "research"],
-            keyPlaceholder: "xai-..."
         ),
         ServiceTemplate(
             name: "Anthropic (Claude)",
@@ -47,13 +62,13 @@ public enum ServiceCatalog {
             keyPlaceholder: "sk-ant-..."
         ),
         ServiceTemplate(
-            name: "Claude",
-            scope: "claude",
-            domains: ["api.anthropic.com"],
-            credentialType: .customHeader,
-            customHeaderName: "x-api-key",
-            suggestedTags: ["coding", "analysis", "chat"],
-            keyPlaceholder: "sk-ant-..."
+            name: "xAI (Grok)",
+            scope: "xai",
+            domains: ["api.x.ai"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["chat", "research"],
+            keyPlaceholder: "xai-..."
         ),
         ServiceTemplate(
             name: "Google AI",
@@ -83,24 +98,6 @@ public enum ServiceCatalog {
             keyPlaceholder: "gsk_..."
         ),
         ServiceTemplate(
-            name: "Cohere",
-            scope: "cohere",
-            domains: ["api.cohere.com"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["research", "analysis"],
-            keyPlaceholder: "API key"
-        ),
-        ServiceTemplate(
-            name: "Perplexity",
-            scope: "perplexity",
-            domains: ["api.perplexity.ai"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["research"],
-            keyPlaceholder: "pplx-..."
-        ),
-        ServiceTemplate(
             name: "OpenRouter",
             scope: "openrouter",
             domains: ["openrouter.ai"],
@@ -119,30 +116,12 @@ public enum ServiceCatalog {
             keyPlaceholder: "API key"
         ),
         ServiceTemplate(
-            name: "Together AI",
-            scope: "together",
-            domains: ["api.together.xyz"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["coding", "general"],
-            keyPlaceholder: "API key"
-        ),
-        ServiceTemplate(
-            name: "Venice AI",
-            scope: "venice",
-            domains: ["api.venice.ai"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["chat", "general"],
-            keyPlaceholder: "API key"
-        ),
-        ServiceTemplate(
-            name: "Moonshot (Kimi)",
-            scope: "moonshot",
+            name: "Kimi (Moonshot)",
+            scope: "kimi-coding",
             domains: ["api.moonshot.ai", "api.moonshot.cn"],
             credentialType: .bearerToken,
             customHeaderName: nil,
-            suggestedTags: ["coding", "chat"],
+            suggestedTags: ["coding"],
             keyPlaceholder: "sk-..."
         ),
         ServiceTemplate(
@@ -152,15 +131,6 @@ public enum ServiceCatalog {
             credentialType: .bearerToken,
             customHeaderName: nil,
             suggestedTags: ["coding", "chat"],
-            keyPlaceholder: "API key"
-        ),
-        ServiceTemplate(
-            name: "Synthetic",
-            scope: "synthetic",
-            domains: ["api.synthetic.new"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["general", "chat"],
             keyPlaceholder: "API key"
         ),
         ServiceTemplate(
@@ -191,74 +161,6 @@ public enum ServiceCatalog {
             keyPlaceholder: "API key"
         ),
         ServiceTemplate(
-            name: "Baidu Qianfan",
-            scope: "qianfan",
-            domains: ["qianfan.baidubce.com"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["chat", "general"],
-            keyPlaceholder: "API key"
-        ),
-        ServiceTemplate(
-            name: "Xiaomi MiMo",
-            scope: "xiaomi",
-            domains: ["api.xiaomimimo.com"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["coding", "chat"],
-            keyPlaceholder: "API key"
-        ),
-
-        ServiceTemplate(
-            name: "DeepSeek",
-            scope: "deepseek",
-            domains: ["api.deepseek.com"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["coding", "chat", "research"],
-            keyPlaceholder: "sk-..."
-        ),
-
-        // ── Developer APIs ──
-        ServiceTemplate(
-            name: "GitHub",
-            scope: "github",
-            domains: ["api.github.com", "github.com"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["coding"],
-            keyPlaceholder: "ghp_... or github_pat_..."
-        ),
-
-        // ── Media / Speech ──
-        ServiceTemplate(
-            name: "ElevenLabs",
-            scope: "elevenlabs",
-            domains: ["api.elevenlabs.io"],
-            credentialType: .customHeader,
-            customHeaderName: "xi-api-key",
-            suggestedTags: ["audio"],
-            keyPlaceholder: "API key"
-        ),
-        ServiceTemplate(
-            name: "Deepgram",
-            scope: "deepgram",
-            domains: ["api.deepgram.com"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["audio"],
-            keyPlaceholder: "API key"
-        ),
-        ServiceTemplate(
-            name: "Replicate",
-            scope: "replicate",
-            domains: ["api.replicate.com"],
-            credentialType: .bearerToken,
-            customHeaderName: nil,
-            suggestedTags: ["images", "general"],
-            keyPlaceholder: "r8_..."
-        ),
-        ServiceTemplate(
             name: "HuggingFace",
             scope: "huggingface",
             domains: ["api-inference.huggingface.co"],
@@ -267,11 +169,258 @@ public enum ServiceCatalog {
             suggestedTags: ["research", "images"],
             keyPlaceholder: "hf_..."
         ),
+
+        // ── Local Providers ──
+        ServiceTemplate(
+            name: "Ollama",
+            scope: "ollama",
+            domains: ["localhost"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "",
+            requiresKey: false
+        ),
     ]
 
     /// Find a template by scope or name (case-insensitive).
     public static func find(_ query: String) -> ServiceTemplate? {
         let q = query.lowercased()
         return all.first { $0.scope == q || $0.name.lowercased() == q }
+    }
+
+    // MARK: - Dynamic Model Catalog (from OpenClaw)
+
+    /// Map ClawAPI scopes to OpenClaw provider prefixes.
+    /// "google-ai" maps to "google" (different naming conventions).
+    private static let scopeToOpenClawProvider: [String: String] = [
+        "openai": "openai",
+        "anthropic": "anthropic",
+        "xai": "xai",
+        "google-ai": "google",
+        "mistral": "mistral",
+        "groq": "groq",
+        "openrouter": "openrouter",
+        "cerebras": "cerebras",
+        "huggingface": "huggingface",
+        "kimi-coding": "kimi-coding",
+        "minimax": "minimax",
+        "zai": "zai",
+        "opencode": "opencode",
+        "vercel-ai-gateway": "vercel-ai-gateway",
+        "ollama": "ollama",
+        "claude": "anthropic",  // Legacy alias — some policies use "claude" instead of "anthropic"
+    ]
+
+    /// Posted on the main thread when the background model catalog fetch completes.
+    /// Views can observe this to refresh their model pickers.
+    public static let catalogDidLoad = Notification.Name("ServiceCatalogDidLoad")
+
+    /// Cached model catalog (loaded once per app launch from OpenClaw CLI).
+    /// Protected by cacheLock — safe for concurrent access.
+    nonisolated(unsafe) private static var _cachedModels: [String: [ModelOption]]?
+    nonisolated(unsafe) private static var _fetchStarted = false
+    private static let cacheLock = NSLock()
+
+    /// Get models for a given scope. Uses OpenClaw's live model catalog.
+    /// Returns an empty list until the background fetch completes.
+    public static func modelsForScope(_ scope: String) -> [ModelOption] {
+        let catalog = loadCatalogIfNeeded()
+        return catalog[scope] ?? []
+    }
+
+    /// Load the full model catalog from OpenClaw (once, then cached).
+    /// First call triggers a background fetch and returns empty immediately
+    /// so the UI doesn't block. Subsequent calls return the cached catalog.
+    private static func loadCatalogIfNeeded() -> [String: [ModelOption]] {
+        cacheLock.lock()
+        if let cached = _cachedModels {
+            cacheLock.unlock()
+            return cached
+        }
+        if !_fetchStarted {
+            _fetchStarted = true
+            cacheLock.unlock()
+            // Fetch on a background thread, cache when done, notify UI
+            DispatchQueue.global(qos: .userInitiated).async {
+                let catalog = fetchOpenClawModels()
+                // Debug: uncomment to verify catalog loading
+                // print("[ServiceCatalog] Loaded \(catalog.count) scopes")
+                cacheLock.lock()
+                _cachedModels = catalog
+                cacheLock.unlock()
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: catalogDidLoad, object: nil)
+                }
+            }
+            return [:]
+        }
+        cacheLock.unlock()
+        return [:]  // Fetch in progress, not ready yet
+    }
+
+    /// Synchronously load the catalog (for use from background threads like sync).
+    public static func loadCatalogSync() -> [String: [ModelOption]] {
+        cacheLock.lock()
+        if let cached = _cachedModels {
+            cacheLock.unlock()
+            return cached
+        }
+        cacheLock.unlock()
+        let catalog = fetchOpenClawModels()
+        cacheLock.lock()
+        _cachedModels = catalog
+        _fetchStarted = true
+        cacheLock.unlock()
+        return catalog
+    }
+
+    /// Force-refresh the model catalog (e.g. on user request or daily).
+    public static func refreshModelCatalog() {
+        cacheLock.lock()
+        _cachedModels = nil
+        _fetchStarted = false
+        cacheLock.unlock()
+    }
+
+    /// Locate the openclaw binary. .app bundles have a minimal PATH,
+    /// so we check common Homebrew / nvm / system locations explicitly.
+    private static func findOpenClaw() -> URL? {
+        let candidates = [
+            "/opt/homebrew/bin/openclaw",
+            "/usr/local/bin/openclaw",
+            "/usr/bin/openclaw",
+        ]
+        for path in candidates {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                return URL(fileURLWithPath: path)
+            }
+        }
+        return nil
+    }
+
+    /// Fetch all models from `openclaw models list --all --json` and group by scope.
+    private static func fetchOpenClawModels() -> [String: [ModelOption]] {
+        guard let openclawURL = findOpenClaw() else { return [:] }
+
+        let process = Process()
+        process.executableURL = openclawURL
+        process.arguments = ["models", "list", "--all", "--json"]
+        // Ensure node can find its modules even inside a .app bundle
+        var env = ProcessInfo.processInfo.environment
+        let extraPaths = ["/opt/homebrew/bin", "/usr/local/bin"]
+        let currentPath = env["PATH"] ?? "/usr/bin:/bin"
+        env["PATH"] = (extraPaths + [currentPath]).joined(separator: ":")
+        process.environment = env
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+
+        do {
+            try process.run()
+        } catch {
+            return [:]
+        }
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let models = json["models"] as? [[String: Any]] else {
+            return [:]
+        }
+
+        // Group models by OpenClaw provider prefix
+        var byProvider: [String: [ModelOption]] = [:]
+        for model in models {
+            guard let key = model["key"] as? String,
+                  let name = model["name"] as? String else { continue }
+            let provider = key.split(separator: "/").first.map(String.init) ?? ""
+            if provider.isEmpty { continue }
+            let option = ModelOption(id: key, name: name)
+            byProvider[provider, default: []].append(option)
+        }
+
+        // Mark the first model in each provider as the default
+        for (provider, options) in byProvider {
+            if !options.isEmpty {
+                var updated = options
+                updated[0] = ModelOption(id: updated[0].id, name: updated[0].name, isDefault: true)
+                byProvider[provider] = updated
+            }
+        }
+
+        // Build scope-keyed catalog using the scope→provider mapping
+        var catalog: [String: [ModelOption]] = [:]
+        for (scope, provider) in scopeToOpenClawProvider {
+            if let options = byProvider[provider] {
+                catalog[scope] = options
+            }
+        }
+
+        // Ollama is local — fetch models from its API instead of the cloud catalog
+        let ollamaModels = fetchOllamaModels()
+        if !ollamaModels.isEmpty {
+            catalog["ollama"] = ollamaModels
+        }
+
+        return catalog
+    }
+
+    /// Fetch locally available models from Ollama's REST API (http://localhost:11434/api/tags).
+    /// Returns an empty array if Ollama isn't running or has no models pulled.
+    private static func fetchOllamaModels() -> [ModelOption] {
+        guard let url = URL(string: "http://localhost:11434/api/tags") else { return [] }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 3  // Don't hang if Ollama isn't running
+
+        // Synchronous fetch using semaphore (we're already on a background thread).
+        // Use nonisolated(unsafe) to satisfy Swift 6 Sendable checking.
+        nonisolated(unsafe) var result: [ModelOption] = []
+        let semaphore = DispatchSemaphore(value: 0)
+
+        let task = URLSession.shared.dataTask(with: request) { data, _, _ in
+            defer { semaphore.signal() }
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let models = json["models"] as? [[String: Any]] else {
+                return
+            }
+
+            var options: [ModelOption] = []
+            for model in models {
+                guard let name = model["name"] as? String else { continue }
+                // Ollama model names look like "llama3.2:3b"
+                // Use "ollama/<name>" as the ID for consistency with other providers
+                let id = "ollama/\(name)"
+                options.append(ModelOption(id: id, name: name))
+            }
+
+            // Mark first as default
+            if !options.isEmpty {
+                options[0] = ModelOption(id: options[0].id, name: options[0].name, isDefault: true)
+            }
+
+            result = options
+        }
+        task.resume()
+        semaphore.wait()
+
+        return result
+    }
+}
+
+/// A model option for a provider.
+public struct ModelOption: Sendable, Identifiable, Hashable {
+    public var id: String            // e.g. "openai/gpt-5.1-codex"
+    public let name: String          // Display name
+    public let isDefault: Bool       // Whether this is the recommended default
+
+    public init(id: String, name: String, isDefault: Bool = false) {
+        self.id = id
+        self.name = name
+        self.isDefault = isDefault
     }
 }

@@ -37,8 +37,8 @@ struct GetStartedView: View {
                         .font(.system(size: 34, weight: .bold, design: .rounded))
 
                     Text(openClawInstalled
-                         ? "Connect your first API provider — OpenClaw will discover it automatically."
-                         : "Connect your first API provider for your AI agents.")
+                         ? "Add a provider, pick a model, and ClawAPI handles the rest."
+                         : "Add a provider and pick the AI model you want to use.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)

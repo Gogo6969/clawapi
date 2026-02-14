@@ -13,6 +13,9 @@ public final class PolicyStore: ObservableObject, Sendable {
     private let auditURL: URL
     private let pendingURL: URL
 
+    /// Keychain for syncing to OpenClaw on save.
+    public let keychain = KeychainService()
+
     public init(directory: URL? = nil) {
         let base = directory ?? PolicyStore.defaultDirectory
         self.policiesURL = base.appendingPathComponent("policies.json")
@@ -21,6 +24,20 @@ public final class PolicyStore: ObservableObject, Sendable {
 
         ensureDirectory(base)
         load()
+
+        // Preload all Keychain secrets in a single query so that
+        // subsequent reads (during sync) hit the in-memory cache
+        // instead of triggering repeated macOS permission prompts.
+        keychain.preloadAll()
+
+        // If any provider is missing an auth profile, do a full sync once
+        // (keys come from the preloaded cache, so no extra Keychain prompts).
+        if OpenClawConfig.needsAuthProfileSync(policies: policies) {
+            OpenClawConfig.syncToOpenClaw(policies: policies, keychain: keychain)
+        } else {
+            // Lightweight sync: only update model priority in openclaw.json
+            OpenClawConfig.syncModelOnly(policies: policies)
+        }
     }
 
     // MARK: - Default directory
@@ -46,11 +63,19 @@ public final class PolicyStore: ObservableObject, Sendable {
 
     // MARK: - Save
 
-    public func save() {
+    public func save(fullSync: Bool = false) {
         saveJSON(policies, to: policiesURL)
         saveJSON(auditEntries, to: auditURL)
         saveJSON(pendingRequests, to: pendingURL)
         logger.info("Saved policy store")
+
+        if fullSync {
+            // Full sync: write API keys to auth-profiles.json + update model
+            OpenClawConfig.syncToOpenClaw(policies: policies, keychain: keychain)
+        } else {
+            // Lightweight sync: only update model priority in openclaw.json
+            OpenClawConfig.syncModelOnly(policies: policies)
+        }
     }
 
     // MARK: - Policy CRUD
@@ -58,20 +83,37 @@ public final class PolicyStore: ObservableObject, Sendable {
     public func addPolicy(_ policy: ScopePolicy) {
         policies.append(policy)
         normalizePriorities()
-        save()
+        save(fullSync: true)
     }
 
     public func removePolicy(_ policy: ScopePolicy) {
         policies.removeAll { $0.id == policy.id }
         normalizePriorities()
-        save()
+        save(fullSync: true)
     }
 
     public func updatePolicy(_ policy: ScopePolicy) {
         if let index = policies.firstIndex(where: { $0.id == policy.id }) {
             policies[index] = policy
-            save()
+            save(fullSync: true)
         }
+    }
+
+    /// Change the sub-model for a policy and optionally promote it to #1.
+    /// This is a single atomic operation: update model + reorder + ONE lightweight sync.
+    /// No keychain access needed — only openclaw.json changes.
+    public func selectModel(_ modelId: String, for policy: ScopePolicy) {
+        guard let index = policies.firstIndex(where: { $0.id == policy.id }) else { return }
+        policies[index].selectedModel = modelId
+
+        // Promote to top if not already #1
+        if index != 0 {
+            let item = policies.remove(at: index)
+            policies.insert(item, at: 0)
+        }
+
+        normalizePriorities()
+        save()  // Lightweight sync — model+priority only, no keychain
     }
 
     // MARK: - Priority Management
@@ -81,6 +123,17 @@ public final class PolicyStore: ObservableObject, Sendable {
         for i in policies.indices {
             policies[i].priority = i + 1
         }
+    }
+
+    /// Move a policy to the top of the list (priority #1).
+    /// Used when the user selects a sub-model — promotes that provider to primary.
+    public func promoteToTop(_ policy: ScopePolicy) {
+        guard let index = policies.firstIndex(where: { $0.id == policy.id }),
+              index != 0 else { return }
+        let item = policies.remove(at: index)
+        policies.insert(item, at: 0)
+        normalizePriorities()
+        save()  // Lightweight sync — model+priority only, no keychain
     }
 
     /// Reorder policies via drag-and-drop, then normalize and save.
