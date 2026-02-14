@@ -18,20 +18,22 @@ enum ScreenshotMode {
         ProcessInfo.processInfo.environment["SCREENSHOT_MODE"] == "1"
     }
 
-    // MARK: - Render a SwiftUI view to a @2x PNG using an off-screen NSWindow
+    // MARK: - Render a SwiftUI view to a high-res PNG using an off-screen NSWindow
 
     static func render<V: View>(_ view: V, width: CGFloat, height: CGFloat, to filename: String) {
-        // Create an off-screen window — this gives full AppKit backing (Lists, etc. render correctly)
+        let scale: CGFloat = 2.0  // Force @2x regardless of display
+
+        // Create an off-screen window for layout
         let window = NSWindow(
             contentRect: NSRect(x: -10000, y: -10000, width: width, height: height),
-            styleMask: [.titled, .closable],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
         window.contentView = NSHostingView(rootView: view.frame(width: width, height: height))
         window.orderFrontRegardless()
 
-        // Force multiple layout passes
+        // Force multiple layout passes so SwiftUI content fully renders
         window.contentView?.layoutSubtreeIfNeeded()
         RunLoop.current.run(until: Date().addingTimeInterval(0.3))
         window.contentView?.layoutSubtreeIfNeeded()
@@ -44,13 +46,39 @@ enum ScreenshotMode {
         }
 
         let frame = contentView.bounds
-        guard let bitmapRep = contentView.bitmapImageRepForCachingDisplay(in: frame) else {
+        let pixelWidth = Int(frame.width * scale)
+        let pixelHeight = Int(frame.height * scale)
+
+        // Create a @2x bitmap manually
+        guard let bitmapRep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixelWidth,
+            pixelsHigh: pixelHeight,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: pixelWidth * 4,
+            bitsPerPixel: 32
+        ) else {
             print("  ✗ Failed to create bitmap for \(filename)")
             window.close()
             return
         }
+        bitmapRep.size = frame.size  // logical size, so drawing is scaled up
 
-        contentView.cacheDisplay(in: frame, to: bitmapRep)
+        NSGraphicsContext.saveGraphicsState()
+        let ctx = NSGraphicsContext(bitmapImageRep: bitmapRep)!
+        ctx.imageInterpolation = .high
+        NSGraphicsContext.current = ctx
+
+        // Scale the context so the view draws at 2x pixel density
+        let cgCtx = ctx.cgContext
+        cgCtx.scaleBy(x: scale, y: scale)
+
+        contentView.displayIgnoringOpacity(frame, in: ctx)
+        NSGraphicsContext.restoreGraphicsState()
         window.close()
 
         guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
@@ -61,7 +89,7 @@ enum ScreenshotMode {
         let path = outputDir.appendingPathComponent("\(filename).png")
         do {
             try pngData.write(to: path)
-            print("  ✓ \(filename).png (\(Int(width))×\(Int(height)))")
+            print("  ✓ \(filename).png (\(pixelWidth)×\(pixelHeight) @2x)")
         } catch {
             print("  ✗ Write error: \(error)")
         }
@@ -79,16 +107,16 @@ enum ScreenshotMode {
         print("Output: \(outputDir.path)")
         print("Store: \(store.policies.count) policies, \(store.auditEntries.count) audit entries, \(store.pendingRequests.count) pending\n")
 
-        // Render at 1200×840 for higher resolution screenshots
+        // Render at high resolution
         let appWidth: CGFloat = 1200
         let appHeight: CGFloat = 840
 
         // Tighter size for content-driven pages (Welcome, How It Works, Get Started)
-        let contentWidth: CGFloat = 900
-        let contentHeight: CGFloat = 700
+        let contentWidth: CGFloat = 1000
+        let contentHeight: CGFloat = 750
 
         // 1. Welcome Page 1 (Start)
-        print("1/9: Welcome — Start")
+        print("1/11: Welcome — Start")
         render(
             WelcomePage1Wrapper()
                 .background(.background),
@@ -97,7 +125,7 @@ enum ScreenshotMode {
         )
 
         // 2. Welcome Page 2 (How It Works)
-        print("2/9: Welcome — How It Works")
+        print("2/11: Welcome — How It Works")
         render(
             WelcomePage2Wrapper()
                 .background(.background),
@@ -106,7 +134,7 @@ enum ScreenshotMode {
         )
 
         // 3. Providers tab
-        print("3/9: Providers")
+        print("3/11: Providers")
         render(
             ProvidersScreenshot(store: store)
                 .background(.background),
@@ -114,60 +142,78 @@ enum ScreenshotMode {
             to: "03-providers"
         )
 
-        // 4. Activity tab
-        print("4/9: Activity")
+        // 4. Sync tab
+        print("4/11: Sync")
+        render(
+            SyncScreenshot(store: store)
+                .background(.background),
+            width: appWidth, height: appHeight,
+            to: "04-sync"
+        )
+
+        // 5. Activity tab
+        print("5/11: Activity")
         render(
             ActivityScreenshot(store: store)
                 .background(.background),
             width: appWidth, height: appHeight,
-            to: "04-activity"
+            to: "05-activity"
         )
 
-        // 5. Logs tab
-        print("5/9: Logs")
+        // 6. Logs tab
+        print("6/11: Logs")
         render(
             LogsScreenshot(store: store)
                 .background(.background),
             width: appWidth, height: appHeight,
-            to: "05-logs"
+            to: "06-logs"
         )
 
-        // 6. Quick Guide popover
-        print("6/9: Quick Guide")
+        // 7. Usage tab
+        print("7/11: Usage")
+        render(
+            UsageScreenshot(store: store)
+                .background(.background),
+            width: appWidth, height: appHeight,
+            to: "07-usage"
+        )
+
+        // 8. Quick Guide popover
+        print("8/11: Quick Guide")
         render(
             HelpPopoverView()
                 .padding()
                 .background(.background),
-            width: 480, height: 500,
-            to: "06-quick-guide"
+            width: 500, height: 520,
+            to: "08-quick-guide"
         )
 
-        // 7. FAQ
-        print("7/9: FAQ")
+        // 9. FAQ
+        print("9/11: FAQ")
         render(
             FAQView()
                 .background(.background),
             width: 720, height: 790,
-            to: "07-faq"
+            to: "09-faq"
         )
 
-        // 8. Get Started — provider picker
-        print("8/9: Get Started")
+        // 10. Get Started — provider picker
+        print("10/11: Get Started")
         render(
             GetStartedScreenshot(store: store)
                 .background(.background),
             width: contentWidth, height: contentHeight,
-            to: "08-get-started"
+            to: "10-get-started"
         )
 
-        // 9. Add Provider — form
-        print("9/9: Add Provider — Form")
+        // 11. Add Provider — form
+        print("11/11: Add Provider — Form")
         render(
             AddScopeSheet()
                 .environmentObject(store)
                 .background(.background),
             width: 650, height: 740,
-            to: "09-add-provider"
+            to: "11-add-provider"
         )
 
         print("\n✓ All screenshots saved to \(outputDir.path)")
@@ -181,43 +227,47 @@ enum ScreenshotMode {
 }
 
 // MARK: - Wrapper views for screenshot mode
-// These wrap the private views from WelcomeView.swift into standalone views
+// These mirror the private views from WelcomeView.swift with rebranded content
 
 struct WelcomePage1Wrapper: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                Spacer().frame(height: 28)
-                VStack(spacing: 12) {
+                Spacer().frame(height: 36)
+                VStack(spacing: 14) {
                     Image(systemName: "shield.lefthalf.filled.badge.checkmark")
-                        .font(.system(size: 56))
+                        .font(.system(size: 72))
                         .foregroundStyle(Color(red: 0.91, green: 0.22, blue: 0.22))
                         .symbolRenderingMode(.hierarchical)
                     Text("ClawAPI")
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
-                    Text("Secure API Tool for OpenClaw")
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                    Text("Model Switcher & Key Vault for OpenClaw")
                         .font(.title3)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
-                    Text("OpenClaw needs to call APIs — but it should never see your passwords or API keys. ClawAPI is a secure tool that injects your credentials into requests server-side, so OpenClaw only sees the API response.")
-                        .font(.callout)
+                    Text("Pick your AI models, save money by switching to cheaper ones when you can, and keep your API keys safe in the macOS Keychain.")
+                        .font(.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
-                        .frame(maxWidth: 520)
+                        .frame(maxWidth: 560)
                 }
-                Spacer().frame(height: 24)
-                VStack(alignment: .leading, spacing: 16) {
-                    ScreenshotFeatureRow(icon: "lock.shield.fill", color: .blue, title: "Zero Credential Exposure",
-                        description: "OpenClaw never sees your passwords or API keys. ClawAPI injects them server-side and returns only the API response.")
-                    ScreenshotFeatureRow(icon: "key.fill", color: .green, title: "Encrypted in the Keychain",
-                        description: "Your credentials are encrypted in the macOS Keychain. No one with just file access can see or misuse them.")
-                    ScreenshotFeatureRow(icon: "list.bullet.rectangle.fill", color: .orange, title: "Full Audit Trail",
-                        description: "Every proxied request is logged. See what was accessed, when, and why.")
-                    ScreenshotFeatureRow(icon: "pause.circle.fill", color: .purple, title: "Pause or Remove Anytime",
-                        description: "Change access mode or delete any provider from the Providers tab. OpenClaw instantly loses access.")
+                Spacer().frame(height: 36)
+                VStack(alignment: .leading, spacing: 20) {
+                    ScreenshotFeatureRow(icon: "cpu.fill", color: .blue,
+                        title: "Switch Models Instantly",
+                        description: "Pick any sub-model from any provider. Your choice syncs to OpenClaw automatically.")
+                    ScreenshotFeatureRow(icon: "key.fill", color: .green,
+                        title: "API Keys in the Keychain",
+                        description: "Your keys are stored in the macOS Keychain, encrypted at rest. You can't lose them.")
+                    ScreenshotFeatureRow(icon: "dollarsign.circle.fill", color: .orange,
+                        title: "Save Money",
+                        description: "Switch to a cheaper model for everyday tasks. Disable providers you're not using. Only pay for what you need.")
+                    ScreenshotFeatureRow(icon: "arrow.triangle.2.circlepath", color: .purple,
+                        title: "Auto-Sync to OpenClaw",
+                        description: "Models, keys, and priorities sync to OpenClaw's config. No manual editing.")
                 }
-                .frame(maxWidth: 520)
-                Spacer().frame(height: 24)
+                .frame(maxWidth: 560)
+                Spacer().frame(height: 36)
                 Button {} label: {
                     HStack(spacing: 6) {
                         Text("How It Works").font(.headline)
@@ -227,13 +277,13 @@ struct WelcomePage1Wrapper: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                Spacer().frame(height: 16)
+                Spacer().frame(height: 20)
                 Text("ClawAPI is provided as-is, without warranty of any kind. You are solely responsible for the credentials you store and the providers you connect. Use at your own risk.")
                     .font(.caption2)
                     .foregroundStyle(.quaternary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 480)
-                Spacer().frame(height: 20)
+                Spacer().frame(height: 24)
             }
             .frame(maxWidth: .infinity)
         }
@@ -247,9 +297,9 @@ private struct ScreenshotFeatureRow: View {
             Image(systemName: icon).font(.title2).foregroundStyle(color)
                 .frame(width: 36, height: 36)
                 .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.subheadline).fontWeight(.semibold)
-                Text(description).font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.body).fontWeight(.semibold)
+                Text(description).font(.body).foregroundStyle(.primary.opacity(0.65))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -259,25 +309,26 @@ private struct ScreenshotFeatureRow: View {
 struct WelcomePage2Wrapper: View {
     var body: some View {
         VStack(spacing: 0) {
-            Spacer().frame(height: 24)
+            Spacer().frame(height: 28)
             Label("How It Works", systemImage: "questionmark.circle.fill")
                 .font(.title2).fontWeight(.semibold)
-            Text("Example: let OpenClaw call the OpenAI API for you")
-                .font(.callout).foregroundStyle(.secondary)
-                .padding(.top, 4).padding(.bottom, 20)
-            VStack(alignment: .leading, spacing: 20) {
-                ScreenshotStep(number: 1, icon: "plus.circle.fill", color: .blue, title: "Add a Provider",
-                    example: "Click + and select OpenAI. Paste your API key. That's it.")
-                ScreenshotStep(number: 2, icon: "key.fill", color: .green, title: "Credential Stored Securely",
-                    example: "Your API key is encrypted in the macOS Keychain — never stored as plain text.")
-                ScreenshotStep(number: 3, icon: "puzzlepiece.extension.fill", color: .orange, title: "OpenClaw Finds It Automatically",
-                    example: "ClawAPI registers itself with OpenClaw — no setup needed. When OpenClaw needs to call an API, it discovers ClawAPI and uses it to inject your credentials. OpenClaw never sees the key.")
-                ScreenshotStep(number: 4, icon: "eye.fill", color: .purple, title: "You Stay in Control",
-                    example: "Every proxied request is logged. Change access mode or delete any provider from the Providers tab.")
+            Text("Three steps — that's it")
+                .font(.body).foregroundStyle(.secondary)
+                .padding(.top, 4).padding(.bottom, 24)
+            VStack(alignment: .leading, spacing: 24) {
+                ScreenshotStep(number: 1, icon: "plus.circle.fill", color: .blue,
+                    title: "Add a Provider",
+                    example: "Click + and pick a provider (OpenAI, Claude, Groq, etc.). Paste your API key.")
+                ScreenshotStep(number: 2, icon: "cpu.fill", color: .green,
+                    title: "Pick Your Model",
+                    example: "Use the dropdown next to each provider to choose a sub-model. It becomes your active model instantly.")
+                ScreenshotStep(number: 3, icon: "checkmark.circle.fill", color: .orange,
+                    title: "Done — OpenClaw Uses It",
+                    example: "ClawAPI syncs everything to OpenClaw automatically. Your key is safe in the Keychain, your model is set, and you're ready to go.")
             }
             .frame(maxWidth: 480)
-            Text("Works for any API provider: OpenAI, GitHub, Stripe, and any provider with an API key or token.")
-                .font(.caption).foregroundStyle(.tertiary)
+            Text("Supports 15+ providers including OpenAI, Anthropic, xAI, Groq, Mistral, and local models like Ollama.")
+                .font(.callout).foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center).padding(.top, 16)
             Spacer()
             HStack(spacing: 16) {
@@ -290,9 +341,36 @@ struct WelcomePage2Wrapper: View {
                 }.buttonStyle(.borderedProminent).controlSize(.large)
             }
             Text("Reopen anytime from the house icon, or check the FAQ from the book icon.")
-                .font(.caption).foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center).padding(.top, 8)
-            Spacer().frame(height: 24)
+                .font(.callout).foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center).padding(.top, 10)
+
+            Spacer().frame(height: 14)
+
+            // Bitcoin donation
+            VStack(spacing: 6) {
+                BitcoinLogo(size: 44)
+                Text("ClawAPI is free — support is much appreciated")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                Text("bc1qzu287ld4rskeqwcng7t3ql8mw0z73kw7trcmes")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.vertical, 8)
+
+            Spacer().frame(height: 10)
+
+            HStack(spacing: 6) {
+                Image(systemName: "eye.slash")
+                Text("Never show the Start Screens again")
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(.fill.tertiary, in: Capsule())
+
+            Spacer().frame(height: 20)
         }
         .frame(maxWidth: .infinity)
     }
@@ -302,11 +380,11 @@ private struct ScreenshotStep: View {
     let number: Int; let icon: String; let color: Color; let title: String; let example: String
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            Text("\(number)").font(.caption2).fontWeight(.bold).foregroundStyle(.white)
-                .frame(width: 24, height: 24).background(color, in: Circle())
+            Text("\(number)").font(.caption).fontWeight(.bold).foregroundStyle(.white)
+                .frame(width: 26, height: 26).background(color, in: Circle())
             VStack(alignment: .leading, spacing: 4) {
                 Label(title, systemImage: icon).font(.headline).foregroundStyle(color)
-                Text(example).font(.callout).foregroundStyle(.secondary)
+                Text(example).font(.body).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -324,6 +402,14 @@ struct ProvidersScreenshot: View {
             logsFilter: .constant(nil)
         )
         .environmentObject(store)
+    }
+}
+
+struct SyncScreenshot: View {
+    let store: PolicyStore
+    var body: some View {
+        ModelSelectorView()
+            .environmentObject(store)
     }
 }
 
@@ -348,6 +434,14 @@ struct LogsScreenshot: View {
             filterResult: .constant(nil)
         )
         .environmentObject(store)
+    }
+}
+
+struct UsageScreenshot: View {
+    let store: PolicyStore
+    var body: some View {
+        UsageView()
+            .environmentObject(store)
     }
 }
 

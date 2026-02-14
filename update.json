@@ -1,8 +1,8 @@
 {
-  "version": "1.2.0",
-  "build": "3",
+  "version": "1.3.0",
+  "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "New Usage tab with credit balance and billing queries. DeepSeek auto-balance, OpenAI/Anthropic/xAI/OpenRouter usage via admin keys. Dashboard links for all providers. DeepSeek added to service catalog.",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.2.0/ClawAPI-1.2.0.zip",
-  "sha256": "8d075b43e090d1bb1859cd20cf241a99965d119a2efb5587ddfaa5c8d133ab27"
+  "releaseNotes": "Rebrand to Model Switcher & Key Vault. Add Ollama support, sub-model picker, Bitcoin donations, install script. Rewritten Welcome, FAQ, and Help screens.",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.3.0/ClawAPI-1.3.0.zip",
+  "sha256": "904744f2de83255cbed1bc40688a96e4fe60b49453d259cffc7a4c73aceec429"
 }
