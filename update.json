@@ -2,7 +2,7 @@
   "version": "1.1.0",
   "build": "2",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "Added 14 new AI providers including OpenRouter, Cerebras, Together AI, Venice AI, Moonshot, MiniMax, and more. 26 providers now supported.",
+  "releaseNotes": "Added 14 new AI providers including OpenRouter, Cerebras, Together AI, Venice AI, Moonshot, MiniMax, and more. Auto-update check on launch. 26 providers now supported.",
   "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.1.0/ClawAPI-1.1.0.zip",
-  "sha256": "9d43ef9c075f1e42d7fd5e3dcb4206a056e393bb2d45efffee80dd9ee5a774ac"
+  "sha256": "ac551dba9e8d9a3de81b547c9e80f6926c40a3de62ca9012a1fb4084432a9dde"
 }
