@@ -170,7 +170,7 @@ struct AddScopeSheet: View {
     }
 
     private var hasSecret: Bool {
-        !secret.trimmingCharacters(in: .whitespaces).isEmpty
+        !secret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     /// True when no providers have been added yet — used to show the Keychain explanation.
@@ -207,10 +207,12 @@ struct AddScopeSheet: View {
             preferredFor: Array(selectedTags).sorted()
         )
 
+        let trimmedSecret = secret.trimmingCharacters(in: .whitespacesAndNewlines)
+
         if hasSecret {
             let keychain = KeychainService()
             do {
-                try keychain.save(string: secret, forScope: policy.scope)
+                try keychain.save(string: trimmedSecret, forScope: policy.scope)
             } catch {
                 keychainError = error.localizedDescription
                 pendingPolicyWithoutSecret = policy
