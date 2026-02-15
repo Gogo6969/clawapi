@@ -1,8 +1,8 @@
 {
-  "version": "1.4.1",
+  "version": "1.4.2",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "Fix gateway restart not working in .app bundle. VPS/SSH remote support, settings gear, contact links.",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.4.1/ClawAPI-1.4.1.zip",
-  "sha256": "3c7e743b6f21426714051a17a1dfafcfd9762685e6361ebf8de013d0bf8a3cbb"
+  "releaseNotes": "UI Improvements\n\u2022 Scrollable release notes in the update window\n\u2022 Fix text cutoff in Local/Remote info modal\n\u2022 Settings Save no longer triggers Keychain prompts when nothing changed\n\u2022 Website and contact links added to Settings and FAQ",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.4.2/ClawAPI-1.4.2.zip",
+  "sha256": "86b01920935f933c91169f8fd02add30c5bb3313ddaaf31476801c643e8a82ea"
 }

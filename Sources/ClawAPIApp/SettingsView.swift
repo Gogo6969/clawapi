@@ -15,12 +15,15 @@ struct SettingsView: View {
     @State private var testStatus: TestStatus = .idle
     @State private var testMessage: String = ""
 
+    private let originalSettings: ConnectionSettings
+
     enum TestStatus {
         case idle, testing, success, failed
     }
 
     init() {
         let settings = ConnectionSettings.load()
+        self.originalSettings = settings
         _mode = State(initialValue: settings.mode)
         _sshHost = State(initialValue: settings.sshHost)
         _sshPort = State(initialValue: "\(settings.sshPort)")
@@ -256,12 +259,27 @@ struct SettingsView: View {
         )
     }
 
+    private func hasChanges() -> Bool {
+        let newSettings = buildSettings()
+        return newSettings.mode != originalSettings.mode
+            || newSettings.sshHost != originalSettings.sshHost
+            || newSettings.sshUser != originalSettings.sshUser
+            || newSettings.sshKeyPath != originalSettings.sshKeyPath
+            || newSettings.sshPort != originalSettings.sshPort
+            || newSettings.remoteOpenClawPath != originalSettings.remoteOpenClawPath
+    }
+
     private func saveSettings() {
+        guard hasChanges() else {
+            dismiss()
+            return
+        }
+
         let settings = buildSettings()
         settings.save()
         OpenClawConfig.connectionSettings = settings
 
-        // Trigger a full re-sync with the (now potentially remote) OpenClaw
+        // Trigger a full re-sync only when settings actually changed
         store.save(fullSync: true)
 
         dismiss()

@@ -65,7 +65,7 @@ struct UpdateView: View {
             }
             .padding()
         }
-        .frame(width: 460, height: 360)
+        .frame(width: 500, height: 440)
         .task {
             if checker.status == .idle {
                 await checker.checkForUpdates()
@@ -115,16 +115,20 @@ struct UpdateView: View {
                 Spacer()
             }
 
-            // Release notes
-            GroupBox("What's New") {
+            // Release notes — scrollable
+            GroupBox {
                 ScrollView {
                     Text(manifest.releaseNotes)
                         .font(.callout)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(4)
+                        .padding(8)
+                        .textSelection(.enabled)
                 }
+            } label: {
+                Label("What's New", systemImage: "doc.text")
+                    .font(.subheadline.weight(.semibold))
             }
-            .frame(maxHeight: 120)
+            .frame(maxHeight: .infinity)
 
             Button {
                 Task {

@@ -22,11 +22,12 @@ struct ConnectionModeInfoView: View {
                 .font(.title2.bold())
                 .padding(.bottom, 6)
 
-            Text("ClawAPI can manage OpenClaw on this Mac or on a remote VPS via SSH.")
+            Text("ClawAPI can manage OpenClaw on this Mac\nor on a remote VPS via SSH.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 380)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 24)
                 .padding(.bottom, 24)
 
             // Two clickable cards
