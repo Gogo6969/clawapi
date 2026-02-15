@@ -155,6 +155,33 @@ struct SettingsView: View {
                         .padding(16)
                         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
                     }
+                    Divider()
+
+                    // Website & Contact
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "globe")
+                                .foregroundStyle(.secondary)
+                            Text("Website:")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                            Link("clawapi.app", destination: URL(string: "https://clawapi.app/")!)
+                                .font(.callout)
+                                .foregroundStyle(.blue)
+                                .underline()
+                        }
+                        HStack(spacing: 8) {
+                            Image(systemName: "envelope")
+                                .foregroundStyle(.secondary)
+                            Text("Need help?")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                            Link("Contact Us", destination: URL(string: "https://clawapi.app/contact")!)
+                                .font(.callout)
+                                .foregroundStyle(.blue)
+                                .underline()
+                        }
+                    }
                 }
                 .padding(24)
             }
@@ -178,7 +205,7 @@ struct SettingsView: View {
             }
             .padding()
         }
-        .frame(width: 520, height: mode == .remote ? 560 : 280)
+        .frame(width: 520, height: mode == .remote ? 600 : 320)
         .animation(.easeInOut(duration: 0.2), value: mode)
     }
 

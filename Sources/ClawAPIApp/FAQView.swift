@@ -145,6 +145,24 @@ struct FAQView: View {
 
                     Divider()
 
+                    // ── Website & Contact ──
+                    FAQSection(icon: "globe", color: .blue, title: "Website & Contact") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 6) {
+                                Text("Website:")
+                                Link("clawapi.app", destination: URL(string: "https://clawapi.app/")!)
+                                    .foregroundStyle(.blue)
+                                    .underline()
+                            }
+                            HStack(spacing: 6) {
+                                Text("Need help?")
+                                Link("Contact Us", destination: URL(string: "https://clawapi.app/contact")!)
+                                    .foregroundStyle(.blue)
+                                    .underline()
+                            }
+                        }
+                    }
+
                     // ── Support Development ──
                     FAQSection(icon: "heart.fill", color: .red, title: "Support Development") {
                         VStack(alignment: .leading, spacing: 12) {
