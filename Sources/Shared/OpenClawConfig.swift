@@ -503,10 +503,10 @@ public enum OpenClawConfig {
                     logger.warning("Could not restart remote OpenClaw gateway: \(error.localizedDescription)")
                 }
             } else {
-                // Local: run process directly
+                // Local: run via login shell so PATH includes /opt/homebrew/bin etc.
                 let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                process.arguments = ["openclaw", "gateway", "restart"]
+                process.executableURL = URL(fileURLWithPath: "/bin/bash")
+                process.arguments = ["-lc", "openclaw gateway restart"]
                 process.standardOutput = FileHandle.nullDevice
                 process.standardError = FileHandle.nullDevice
                 do {

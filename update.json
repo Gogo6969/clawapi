@@ -4,5 +4,5 @@
   "minimumSystemVersion": "14.0",
   "releaseNotes": "VPS/SSH remote support — manage OpenClaw on a remote server via SSH. Settings gear with Local/Remote toggle, SSH credentials, and test connection. Contact links in Settings and FAQ. Website and contact info added throughout.",
   "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.4.0/ClawAPI-1.4.0.zip",
-  "sha256": "0a45897e05772520e052d6b446417fb21ca9a4a85c124c850d8780d0825c6f0d"
+  "sha256": "2e1a083fcdf6a2ec3b18c43ced58bca0c1f6e9026bf1919055a4f32ba6b0925c"
 }
