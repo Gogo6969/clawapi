@@ -1,8 +1,8 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "VPS/SSH remote support — manage OpenClaw on a remote server via SSH. Settings gear with Local/Remote toggle, SSH credentials, and test connection. Contact links in Settings and FAQ. Website and contact info added throughout.",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.4.0/ClawAPI-1.4.0.zip",
-  "sha256": "2e1a083fcdf6a2ec3b18c43ced58bca0c1f6e9026bf1919055a4f32ba6b0925c"
+  "releaseNotes": "Fix gateway restart not working in .app bundle. VPS/SSH remote support, settings gear, contact links.",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.4.1/ClawAPI-1.4.1.zip",
+  "sha256": "3c7e743b6f21426714051a17a1dfafcfd9762685e6361ebf8de013d0bf8a3cbb"
 }
