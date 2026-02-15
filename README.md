@@ -29,6 +29,7 @@ Installs `ClawAPI.app` to `/Applications`. Requires macOS 14+.
 - **Auto-sync** — Changes are written directly to OpenClaw's config, no restart needed
 - **Auto-update** — Built-in update checker fetches new releases from GitHub
 - **Usage dashboard** — Check your credit balance and billing across providers
+- **VPS support via SSH** — Manage OpenClaw on a remote server, not just your Mac
 - **No proxy, no middleware** — ClawAPI talks directly to provider APIs using your keys
 
 ## Screenshots

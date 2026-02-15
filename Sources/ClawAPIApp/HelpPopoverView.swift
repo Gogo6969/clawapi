@@ -52,6 +52,12 @@ struct HelpPopoverView: View {
                     title: "Pending Requests",
                     text: "When a provider requires manual approval, requests queue here."
                 )
+                HelpSection(
+                    icon: "gearshape",
+                    color: .gray,
+                    title: "Settings (Gear)",
+                    text: "Switch between Local and Remote (SSH) mode. Manage OpenClaw on this Mac or on a VPS server."
+                )
             }
         }
         .padding()

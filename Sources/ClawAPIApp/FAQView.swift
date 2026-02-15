@@ -110,10 +110,19 @@ struct FAQView: View {
                         Text("Yes. Add Ollama from the provider list — no API key needed. ClawAPI detects your locally running models automatically.")
                     }
 
+                    // ── VPS / Remote ──
+                    FAQSection(icon: "server.rack", color: .blue, title: "Can I manage OpenClaw on a remote VPS?") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Yes. Click the gear icon in the toolbar to open Settings. Switch to Remote (SSH), enter your VPS host, user, and SSH key path, then click Test Connection.")
+                            Text("ClawAPI connects via SSH to read and write OpenClaw's config on your server. Your API keys are still stored safely in the macOS Keychain on your Mac — they're pushed to the VPS config during sync.")
+                            Text("Switch back to Local anytime with one click.")
+                        }
+                    }
+
                     // ── How Sync Works ──
                     FAQSection(icon: "puzzlepiece.extension", color: .cyan, title: "How does ClawAPI talk to OpenClaw?") {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("ClawAPI writes your API keys into OpenClaw's auth-profiles.json and sets the active model in openclaw.json. OpenClaw reads these files directly — it uses your keys natively.")
+                            Text("ClawAPI writes your API keys into OpenClaw's auth-profiles.json and sets the active model in openclaw.json. In local mode, this is direct file I/O. In remote mode, it happens over SSH.")
                             Text("ClawAPI also registers itself via MCP so OpenClaw can launch it on demand.")
                         }
                     }

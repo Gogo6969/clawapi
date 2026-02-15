@@ -4,20 +4,74 @@ import OSLog
 private let logger = Logger(subsystem: "com.clawapi", category: "OpenClawConfig")
 
 /// Reads and writes OpenClaw's openclaw.json to manage the active model.
+/// Supports both local and remote (SSH) modes via ConnectionSettings.
 public enum OpenClawConfig {
 
-    /// Path to OpenClaw's main config file.
+    /// Current connection settings. Loaded once at startup, updated when the user changes settings.
+    nonisolated(unsafe) public static var connectionSettings = ConnectionSettings.load()
+
+    /// Path to OpenClaw's main config file (local mode).
     public static let configURL: URL = {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".openclaw")
             .appendingPathComponent("openclaw.json")
     }()
 
+    // MARK: - File I/O Abstraction
+
+    /// Read openclaw.json from local or remote.
+    private static func readConfig() throws -> Data {
+        if connectionSettings.mode == .remote {
+            return try RemoteShell.readFile(
+                path: connectionSettings.remoteConfigPath,
+                settings: connectionSettings
+            )
+        }
+        return try Data(contentsOf: configURL)
+    }
+
+    /// Write openclaw.json to local or remote.
+    private static func writeConfig(_ data: Data) throws {
+        if connectionSettings.mode == .remote {
+            try RemoteShell.writeFile(
+                data: data,
+                path: connectionSettings.remoteConfigPath,
+                settings: connectionSettings
+            )
+        } else {
+            try data.write(to: configURL, options: .atomic)
+        }
+    }
+
+    /// Read auth-profiles.json from local or remote.
+    private static func readAuthProfiles() -> Data? {
+        if connectionSettings.mode == .remote {
+            return try? RemoteShell.readFile(
+                path: connectionSettings.remoteAuthProfilesPath,
+                settings: connectionSettings
+            )
+        }
+        return try? Data(contentsOf: authProfilesURL)
+    }
+
+    /// Write auth-profiles.json to local or remote.
+    private static func writeAuthProfiles(_ data: Data) throws {
+        if connectionSettings.mode == .remote {
+            try RemoteShell.writeFile(
+                data: data,
+                path: connectionSettings.remoteAuthProfilesPath,
+                settings: connectionSettings
+            )
+        } else {
+            try data.write(to: authProfilesURL, options: .atomic)
+        }
+    }
+
     // MARK: - Read
 
     /// Read the current primary model from OpenClaw's config.
     public static func currentModel() -> String? {
-        guard let data = try? Data(contentsOf: configURL),
+        guard let data = try? readConfig(),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let agents = json["agents"] as? [String: Any],
               let defaults = agents["defaults"] as? [String: Any],
@@ -30,7 +84,7 @@ public enum OpenClawConfig {
 
     /// Read the current fallback chain.
     public static func currentFallbacks() -> [String] {
-        guard let data = try? Data(contentsOf: configURL),
+        guard let data = try? readConfig(),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let agents = json["agents"] as? [String: Any],
               let defaults = agents["defaults"] as? [String: Any],
@@ -41,9 +95,13 @@ public enum OpenClawConfig {
         return fallbacks
     }
 
-    /// Check if OpenClaw config exists.
+    /// Check if OpenClaw config exists (local or remote).
     public static var isInstalled: Bool {
-        FileManager.default.fileExists(atPath: configURL.path)
+        if connectionSettings.mode == .remote {
+            return connectionSettings.hasSSHCredentials &&
+                RemoteShell.fileExists(path: connectionSettings.remoteConfigPath, settings: connectionSettings)
+        }
+        return FileManager.default.fileExists(atPath: configURL.path)
     }
 
     // MARK: - Write
@@ -55,7 +113,7 @@ public enum OpenClawConfig {
             throw ConfigError.notInstalled
         }
 
-        guard let data = try? Data(contentsOf: configURL) else {
+        guard let data = try? readConfig() else {
             throw ConfigError.readFailed
         }
 
@@ -99,9 +157,9 @@ public enum OpenClawConfig {
         meta["lastTouchedAt"] = fmt.string(from: Date())
         json["meta"] = meta
 
-        // Write atomically
+        // Write
         let newData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys])
-        try newData.write(to: configURL, options: .atomic)
+        try writeConfig(newData)
 
         logger.info("Switched OpenClaw model: \(oldPrimary ?? "none") → \(newModel)")
     }
@@ -113,7 +171,7 @@ public enum OpenClawConfig {
     /// fallback whose ID starts with a managed prefix is removed (prevents stale models).
     public static func setPrimaryModelAndFallbacks(_ newModel: String, fallbacks managedFallbacks: [String], managedPrefixes: Set<String> = []) throws {
         guard isInstalled else { throw ConfigError.notInstalled }
-        guard let data = try? Data(contentsOf: configURL) else { throw ConfigError.readFailed }
+        guard let data = try? readConfig() else { throw ConfigError.readFailed }
         guard var json = try? JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [String: Any] else { throw ConfigError.parseFailed }
 
         var agents = json["agents"] as? [String: Any] ?? [:]
@@ -127,9 +185,6 @@ public enum OpenClawConfig {
         let managedSet = Set([newModel] + managedFallbacks)
 
         // Preserve non-managed fallbacks (user's own models in OpenClaw).
-        // Remove any fallback that either:
-        // 1) is in our explicit managed set, OR
-        // 2) starts with a managed provider prefix (stale models from previous selections)
         let preservedFallbacks = existingFallbacks.filter { fb in
             if managedSet.contains(fb) { return false }
             for prefix in managedPrefixes {
@@ -160,7 +215,7 @@ public enum OpenClawConfig {
         json["meta"] = meta
 
         let newData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys])
-        try newData.write(to: configURL, options: .atomic)
+        try writeConfig(newData)
 
         logger.info("Set OpenClaw model: \(newModel), fallbacks: \(finalFallbacks.joined(separator: ", "))")
     }
@@ -168,7 +223,7 @@ public enum OpenClawConfig {
     /// Add a model to the fallback chain (if not already present).
     public static func addFallback(_ model: String) throws {
         guard isInstalled else { throw ConfigError.notInstalled }
-        guard let data = try? Data(contentsOf: configURL) else { throw ConfigError.readFailed }
+        guard let data = try? readConfig() else { throw ConfigError.readFailed }
         guard var json = try? JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [String: Any] else { throw ConfigError.parseFailed }
 
         var agents = json["agents"] as? [String: Any] ?? [:]
@@ -187,14 +242,14 @@ public enum OpenClawConfig {
         json["agents"] = agents
 
         let newData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys])
-        try newData.write(to: configURL, options: .atomic)
+        try writeConfig(newData)
 
         logger.info("Added \(model) to OpenClaw fallback chain")
     }
 
     // MARK: - Auth Profile Sync
 
-    /// Path to OpenClaw's agent-level auth profiles.
+    /// Path to OpenClaw's agent-level auth profiles (local mode).
     public static let authProfilesURL: URL = {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".openclaw")
@@ -202,18 +257,15 @@ public enum OpenClawConfig {
     }()
 
     /// Map ClawAPI scopes to OpenClaw provider names for auth profile injection.
-    /// Only providers where we can write an API key into auth-profiles.json.
     private static let scopeToProvider: [String: String] = [
         "openai": "openai",
         "anthropic": "anthropic",
-        "claude": "anthropic",  // Legacy alias
+        "claude": "anthropic",
         "xai": "xai",
         "ollama": "ollama",
     ]
 
     /// Required provider routing info: baseUrl and API type.
-    /// OpenClaw discovers models from its own database — we only need to ensure
-    /// the provider has the correct endpoint and API protocol.
     private static let providerConfig: [String: (baseUrl: String, api: String)] = [
         "openai":    ("https://api.openai.com/v1", "openai-completions"),
         "anthropic": ("https://api.anthropic.com",  "anthropic-messages"),
@@ -221,25 +273,23 @@ public enum OpenClawConfig {
         "ollama":    ("http://localhost:11434",      "openai-responses"),
     ]
 
-    /// Map ClawAPI scopes to the default model that OpenClaw should use
-    /// when that scope is the top-priority provider.
+    /// Map ClawAPI scopes to the default model.
     private static let scopeToDefaultModel: [String: String] = [
         "openai": "openai/gpt-4.1",
         "anthropic": "anthropic/claude-sonnet-4-5",
-        "claude": "anthropic/claude-sonnet-4-5",  // Legacy alias
+        "claude": "anthropic/claude-sonnet-4-5",
         "xai": "xai/grok-4-fast",
         "groq": "groq/meta-llama/llama-4-scout-17b-16e-instruct",
         "mistral": "mistral/mistral-large-latest",
         "ollama": "ollama/llama3.2:3b",
     ]
 
-    /// Whether a scope requires an API key (false for local providers like Ollama).
+    /// Whether a scope requires an API key.
     private static func requiresKey(scope: String) -> Bool {
         ServiceCatalog.find(scope)?.requiresKey ?? true
     }
 
     /// Check if any enabled provider is missing an auth profile in OpenClaw.
-    /// Used at launch to decide if a full sync (with Keychain) is needed.
     public static func needsAuthProfileSync(policies: [ScopePolicy]) -> Bool {
         guard isInstalled else { return false }
 
@@ -247,10 +297,9 @@ public enum OpenClawConfig {
             .filter { $0.isEnabled && ($0.hasSecret || !requiresKey(scope: $0.scope)) && $0.approvalMode == .auto }
 
         // Read existing auth-profiles
-        guard let data = try? Data(contentsOf: authProfilesURL),
+        guard let data = readAuthProfiles(),
               let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let profiles = parsed["profiles"] as? [String: Any] else {
-            // No auth-profiles file at all — need sync if we have any injectable providers
             return enabled.contains { scopeToProvider[$0.scope] != nil }
         }
 
@@ -264,8 +313,7 @@ public enum OpenClawConfig {
         return false
     }
 
-    /// Build provider prefixes (e.g. "openai/", "xai/") from enabled scopes.
-    /// Used to clean stale model entries from the fallback chain.
+    /// Build provider prefixes from enabled scopes.
     private static func managedProviderPrefixes(from enabledScopes: Set<String>) -> Set<String> {
         var prefixes = Set<String>()
         for scope in enabledScopes {
@@ -277,7 +325,6 @@ public enum OpenClawConfig {
     }
 
     /// Resolve the model to use for a given policy.
-    /// Prefers the user's selectedModel, falls back to the static default.
     private static func resolvedModel(for policy: ScopePolicy) -> String? {
         if let selected = policy.selectedModel, !selected.isEmpty {
             return selected
@@ -287,8 +334,7 @@ public enum OpenClawConfig {
 
     /// Lightweight sync that only updates the primary model and provider
     /// definitions in openclaw.json — does NOT touch the keychain or
-    /// auth-profiles.json. Safe to call on every app launch without
-    /// triggering keychain access prompts.
+    /// auth-profiles.json.
     public static func syncModelOnly(policies: [ScopePolicy]) {
         guard isInstalled else { return }
 
@@ -296,7 +342,6 @@ public enum OpenClawConfig {
             .filter { $0.isEnabled && ($0.hasSecret || !requiresKey(scope: $0.scope)) && $0.approvalMode == .auto }
             .sorted { $0.priority < $1.priority }
 
-        // Build ordered model list from enabled policies
         var orderedModels: [String] = []
         for policy in enabled {
             if let model = resolvedModel(for: policy), !orderedModels.contains(model) {
@@ -308,10 +353,8 @@ public enum OpenClawConfig {
         let fallbackModels = Array(orderedModels.dropFirst())
         let enabledScopes = Set(enabled.map(\.scope))
 
-        // Fix provider definitions (baseUrls, models arrays)
         syncProviderDefinitions(enabledScopes: enabledScopes)
 
-        // Set the primary model and fallbacks (clean stale models from managed providers)
         do {
             try setPrimaryModelAndFallbacks(topModel, fallbacks: fallbackModels,
                                             managedPrefixes: managedProviderPrefixes(from: enabledScopes))
@@ -319,16 +362,10 @@ public enum OpenClawConfig {
             logger.error("Failed to set primary model: \(error)")
         }
 
-        // Restart gateway so it picks up the new model
         restartGateway()
     }
 
     /// Sync ClawAPI's enabled providers into OpenClaw's auth-profiles.json.
-    /// Reads real API keys from Keychain and writes them directly so OpenClaw
-    /// talks to providers natively — no proxy needed.
-    ///
-    /// Also updates the primary model in openclaw.json to match the
-    /// highest-priority enabled provider.
     public static func syncToOpenClaw(
         policies: [ScopePolicy],
         keychain: KeychainService
@@ -338,14 +375,13 @@ public enum OpenClawConfig {
             return
         }
 
-        // Build the set of providers we can inject
         let enabled = policies
             .filter { $0.isEnabled && ($0.hasSecret || !requiresKey(scope: $0.scope)) && $0.approvalMode == .auto }
             .sorted { $0.priority < $1.priority }
 
         // Read existing auth-profiles (preserve profiles we don't manage)
         var authDoc: [String: Any]
-        if let data = try? Data(contentsOf: authProfilesURL),
+        if let data = readAuthProfiles(),
            let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             authDoc = parsed
         } else {
@@ -356,7 +392,6 @@ public enum OpenClawConfig {
         var lastGood = authDoc["lastGood"] as? [String: Any] ?? [:]
         var usageStats = authDoc["usageStats"] as? [String: Any] ?? [:]
 
-        // Build ordered model list from enabled policies
         var orderedModels: [String] = []
         for policy in enabled {
             if let model = resolvedModel(for: policy), !orderedModels.contains(model) {
@@ -365,22 +400,18 @@ public enum OpenClawConfig {
         }
 
         for policy in enabled {
-            // Only inject auth profiles for providers we can directly map
             guard let provider = scopeToProvider[policy.scope] else { continue }
 
             let profileKey = "\(provider):default"
 
             if requiresKey(scope: policy.scope) {
-                // Cloud provider — need an API key from the Keychain
                 guard let key = try? keychain.retrieveString(forScope: policy.scope) else { continue }
-
                 profiles[profileKey] = [
                     "type": "api_key",
                     "provider": provider,
                     "key": key,
                 ] as [String: Any]
             } else {
-                // Local provider (Ollama) — no API key needed, just register the profile
                 profiles[profileKey] = [
                     "type": "none",
                     "provider": provider,
@@ -388,8 +419,6 @@ public enum OpenClawConfig {
             }
 
             lastGood[provider] = profileKey
-
-            // Clear any cooldown / error state
             usageStats[profileKey] = [
                 "lastUsed": 0,
                 "errorCount": 0,
@@ -398,7 +427,7 @@ public enum OpenClawConfig {
             logger.info("Synced \(policy.scope) → OpenClaw \(provider):default")
         }
 
-        // Remove profiles for providers that are no longer enabled in ClawAPI.
+        // Remove profiles for providers that are no longer enabled
         let enabledScopes = Set(enabled.map(\.scope))
         var checkedProviders = Set<String>()
         for (scope, provider) in scopeToProvider {
@@ -406,14 +435,12 @@ public enum OpenClawConfig {
             checkedProviders.insert(provider)
 
             let profileKey = "\(provider):default"
-            // Check if ANY scope that maps to this provider is enabled
             let providerHasEnabledScope = scopeToProvider
                 .filter { $0.value == provider }
                 .keys
                 .contains { enabledScopes.contains($0) }
 
             if !providerHasEnabledScope && profiles[profileKey] != nil {
-                // Check if this profile was created by us (type == api_key)
                 if let prof = profiles[profileKey] as? [String: Any],
                    prof["type"] as? String == "api_key" {
                     profiles.removeValue(forKey: profileKey)
@@ -422,28 +449,25 @@ public enum OpenClawConfig {
                     logger.info("Removed disabled provider \(provider) from OpenClaw auth")
                 }
             }
-            _ = scope // suppress unused warning
+            _ = scope
         }
 
         authDoc["profiles"] = profiles
         authDoc["lastGood"] = lastGood
         authDoc["usageStats"] = usageStats
 
-        // Write atomically
+        // Write auth-profiles
         do {
             let data = try JSONSerialization.data(withJSONObject: authDoc, options: [.prettyPrinted, .sortedKeys])
-            try data.write(to: authProfilesURL, options: .atomic)
+            try writeAuthProfiles(data)
             logger.info("Wrote OpenClaw auth-profiles.json")
         } catch {
             logger.error("Failed to write auth-profiles.json: \(error)")
             return
         }
 
-        // Ensure openclaw.json has correct provider baseUrls
-        // (prevents stale gateway URLs from previous configs)
         syncProviderDefinitions(enabledScopes: enabledScopes)
 
-        // Update the primary model and fallbacks in openclaw.json
         if let topModel = orderedModels.first {
             let fallbackModels = Array(orderedModels.dropFirst())
             do {
@@ -454,7 +478,6 @@ public enum OpenClawConfig {
             }
         }
 
-        // Restart OpenClaw gateway so it picks up the config changes
         restartGateway()
     }
 
@@ -464,21 +487,39 @@ public enum OpenClawConfig {
     /// Runs in background to avoid blocking the UI.
     private static func restartGateway() {
         DispatchQueue.global(qos: .utility).async {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = ["openclaw", "gateway", "restart"]
-            process.standardOutput = FileHandle.nullDevice
-            process.standardError = FileHandle.nullDevice
-            do {
-                try process.run()
-                process.waitUntilExit()
-                if process.terminationStatus == 0 {
-                    logger.info("Restarted OpenClaw gateway")
-                } else {
-                    logger.warning("OpenClaw gateway restart exited with \(process.terminationStatus)")
+            if connectionSettings.mode == .remote {
+                // Remote: restart via SSH
+                do {
+                    let result = try RemoteShell.execute(
+                        command: "bash -lc 'openclaw gateway restart'",
+                        settings: connectionSettings
+                    )
+                    if result.exitCode == 0 {
+                        logger.info("Restarted remote OpenClaw gateway")
+                    } else {
+                        logger.warning("Remote OpenClaw gateway restart exited with \(result.exitCode): \(result.stderr)")
+                    }
+                } catch {
+                    logger.warning("Could not restart remote OpenClaw gateway: \(error.localizedDescription)")
                 }
-            } catch {
-                logger.warning("Could not restart OpenClaw gateway: \(error.localizedDescription)")
+            } else {
+                // Local: run process directly
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+                process.arguments = ["openclaw", "gateway", "restart"]
+                process.standardOutput = FileHandle.nullDevice
+                process.standardError = FileHandle.nullDevice
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+                    if process.terminationStatus == 0 {
+                        logger.info("Restarted OpenClaw gateway")
+                    } else {
+                        logger.warning("OpenClaw gateway restart exited with \(process.terminationStatus)")
+                    }
+                } catch {
+                    logger.warning("Could not restart OpenClaw gateway: \(error.localizedDescription)")
+                }
             }
         }
     }
@@ -486,9 +527,8 @@ public enum OpenClawConfig {
     // MARK: - Provider Definitions Sync
 
     /// Ensure openclaw.json has correct baseUrl entries for enabled providers.
-    /// This prevents stale URLs (e.g. a dead gateway proxy) from breaking routing.
     private static func syncProviderDefinitions(enabledScopes: Set<String>) {
-        guard let data = try? Data(contentsOf: configURL),
+        guard let data = try? readConfig(),
               var json = try? JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [String: Any] else {
             return
         }
@@ -505,7 +545,6 @@ public enum OpenClawConfig {
             let currentBase = entry["baseUrl"] as? String
             let currentApi = entry["api"] as? String
 
-            // Only fix baseUrl and api type — never touch models (OpenClaw manages its own catalog)
             let needsFix = currentBase == nil
                 || currentBase != config.baseUrl
                 || currentApi != config.api
@@ -528,7 +567,7 @@ public enum OpenClawConfig {
 
         do {
             let newData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys])
-            try newData.write(to: configURL, options: .atomic)
+            try writeConfig(newData)
         } catch {
             logger.error("Failed to write provider definitions: \(error)")
         }

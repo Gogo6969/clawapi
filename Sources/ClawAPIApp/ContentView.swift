@@ -54,6 +54,9 @@ struct ContentView: View {
     @State private var showingHelp = false
     @State private var showingFAQ = false
     @State private var showingUpdate = false
+    @State private var showingSettings = false
+    @State private var showingConnectionInfo = false
+    @AppStorage("dismissedConnectionModeInfo") private var dismissedConnectionModeInfo = false
     @StateObject private var updateChecker = UpdateChecker()
     @State private var logsFilter: AuditResult?
 
@@ -143,6 +146,15 @@ struct ContentView: View {
 
             ToolbarItem(placement: .automatic) {
                 Button {
+                    showingSettings = true
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .help("Connection settings — local or remote VPS")
+            }
+
+            ToolbarItem(placement: .automatic) {
+                Button {
                     showingUpdate = true
                 } label: {
                     Label("Updates", systemImage: updateChecker.hasUpdate ? "arrow.down.circle.fill" : "arrow.down.circle")
@@ -153,6 +165,10 @@ struct ContentView: View {
         .onAppear {
             if !ScreenshotMode.isEnabled {
                 TitleBarBranding.install()
+                // Show connection mode info once
+                if !dismissedConnectionModeInfo {
+                    showingConnectionInfo = true
+                }
             }
         }
         .task {
@@ -175,6 +191,14 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingUpdate) {
             UpdateView(checker: updateChecker)
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+        }
+        .sheet(isPresented: $showingConnectionInfo) {
+            ConnectionModeInfoView {
+                showingSettings = true
+            }
         }
     }
 }
