@@ -265,6 +265,14 @@ public enum OpenClawConfig {
         "ollama": "ollama",
     ]
 
+    /// Look up the OpenClaw provider for a scope, matching on the base name
+    /// (e.g. "openai:completions" → "openai" → provider "openai").
+    private static func providerForScope(_ scope: String) -> String? {
+        if let direct = scopeToProvider[scope] { return direct }
+        let base = scope.split(separator: ":").first.map(String.init) ?? scope
+        return scopeToProvider[base]
+    }
+
     /// Required provider routing info: baseUrl and API type.
     private static let providerConfig: [String: (baseUrl: String, api: String)] = [
         "openai":    ("https://api.openai.com/v1", "openai-completions"),
@@ -304,11 +312,11 @@ public enum OpenClawConfig {
         guard let data = readAuthProfiles(),
               let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let profiles = parsed["profiles"] as? [String: Any] else {
-            return enabled.contains { scopeToProvider[$0.scope] != nil }
+            return enabled.contains { providerForScope($0.scope) != nil }
         }
 
         for policy in enabled {
-            guard let provider = scopeToProvider[policy.scope] else { continue }
+            guard let provider = providerForScope(policy.scope) else { continue }
             let profileKey = "\(provider):default"
             if profiles[profileKey] == nil {
                 return true
@@ -321,7 +329,7 @@ public enum OpenClawConfig {
     private static func managedProviderPrefixes(from enabledScopes: Set<String>) -> Set<String> {
         var prefixes = Set<String>()
         for scope in enabledScopes {
-            if let provider = scopeToProvider[scope] {
+            if let provider = providerForScope(scope) {
                 prefixes.insert("\(provider)/")
             }
         }
@@ -333,7 +341,9 @@ public enum OpenClawConfig {
         if let selected = policy.selectedModel, !selected.isEmpty {
             return selected
         }
-        return scopeToDefaultModel[policy.scope]
+        if let direct = scopeToDefaultModel[policy.scope] { return direct }
+        let base = policy.scope.split(separator: ":").first.map(String.init) ?? policy.scope
+        return scopeToDefaultModel[base]
     }
 
     /// Lightweight sync that only updates the primary model and provider
@@ -408,7 +418,7 @@ public enum OpenClawConfig {
         }
 
         for policy in enabled {
-            guard let provider = scopeToProvider[policy.scope] else { continue }
+            guard let provider = providerForScope(policy.scope) else { continue }
 
             let profileKey = "\(provider):default"
 
@@ -443,10 +453,7 @@ public enum OpenClawConfig {
             checkedProviders.insert(provider)
 
             let profileKey = "\(provider):default"
-            let providerHasEnabledScope = scopeToProvider
-                .filter { $0.value == provider }
-                .keys
-                .contains { enabledScopes.contains($0) }
+            let providerHasEnabledScope = enabledScopes.contains { providerForScope($0) == provider }
 
             if !providerHasEnabledScope && profiles[profileKey] != nil {
                 if let prof = profiles[profileKey] as? [String: Any],
@@ -516,7 +523,7 @@ public enum OpenClawConfig {
         var changed = false
 
         for policy in keyless {
-            guard let provider = scopeToProvider[policy.scope] else { continue }
+            guard let provider = providerForScope(policy.scope) else { continue }
             let profileKey = "\(provider):default"
 
             // Only add if missing — never overwrite an existing profile
@@ -601,7 +608,7 @@ public enum OpenClawConfig {
         var changed = false
 
         for scope in enabledScopes {
-            guard let providerName = scopeToProvider[scope],
+            guard let providerName = providerForScope(scope),
                   let config = providerConfig[providerName] else { continue }
 
             var entry = providers[providerName] as? [String: Any] ?? [:]

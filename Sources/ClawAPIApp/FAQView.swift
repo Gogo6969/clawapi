@@ -127,6 +127,14 @@ struct FAQView: View {
                         }
                     }
 
+                    FAQSection(icon: "magnifyingglass", color: .mint, title: "How do I verify which model OpenClaw is using?") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Open Terminal and run:")
+                            CodeBlock("openclaw status")
+                            Text("Look at the Sessions line — it shows the default model and each session's active model. This is the authoritative source. Don't rely on the AI's self-report — models can't reliably identify themselves.")
+                        }
+                    }
+
                     FAQSection(icon: "pause.circle", color: .purple, title: "How do I stop OpenClaw from using a provider?") {
                         Text("Click the ENABLED button on the provider row to disable it. One click. Re-enable anytime — your key and settings are kept.")
                     }
