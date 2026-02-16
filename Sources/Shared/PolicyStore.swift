@@ -25,14 +25,13 @@ public final class PolicyStore: ObservableObject, Sendable {
         ensureDirectory(base)
         load()
 
-        // Preload all Keychain secrets in a single query so that
-        // subsequent reads (during sync) hit the in-memory cache
-        // instead of triggering repeated macOS permission prompts.
-        keychain.preloadAll()
-
-        // If any provider is missing an auth profile, do a full sync once
-        // (keys come from the preloaded cache, so no extra Keychain prompts).
-        if OpenClawConfig.needsAuthProfileSync(policies: policies) {
+        // Only access Keychain if auth profiles actually need syncing.
+        // This avoids unnecessary macOS permission prompts on every launch
+        // (especially with ad-hoc signing where each rebuild is a new binary).
+        let needsSync = OpenClawConfig.needsAuthProfileSync(policies: policies)
+        logger.info("Launch sync check: needsAuthProfileSync=\(needsSync)")
+        if needsSync {
+            keychain.preloadAll()
             OpenClawConfig.syncToOpenClaw(policies: policies, keychain: keychain)
         } else {
             // Lightweight sync: only update model priority in openclaw.json

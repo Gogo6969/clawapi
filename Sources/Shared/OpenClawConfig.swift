@@ -289,12 +289,16 @@ public enum OpenClawConfig {
         ServiceCatalog.find(scope)?.requiresKey ?? true
     }
 
-    /// Check if any enabled provider is missing an auth profile in OpenClaw.
+    /// Check if any enabled provider that requires a key is missing an auth profile.
+    /// Keyless providers (like Ollama) are excluded — they don't need Keychain access.
     public static func needsAuthProfileSync(policies: [ScopePolicy]) -> Bool {
         guard isInstalled else { return false }
 
+        // Only check providers that require an API key
         let enabled = policies
-            .filter { $0.isEnabled && ($0.hasSecret || !requiresKey(scope: $0.scope)) && $0.approvalMode == .auto }
+            .filter { $0.isEnabled && $0.hasSecret && requiresKey(scope: $0.scope) && $0.approvalMode == .auto }
+
+        guard !enabled.isEmpty else { return false }
 
         // Read existing auth-profiles
         guard let data = readAuthProfiles(),
@@ -334,7 +338,7 @@ public enum OpenClawConfig {
 
     /// Lightweight sync that only updates the primary model and provider
     /// definitions in openclaw.json — does NOT touch the keychain or
-    /// auth-profiles.json.
+    /// auth-profiles.json (except for keyless providers like Ollama).
     public static func syncModelOnly(policies: [ScopePolicy]) {
         guard isInstalled else { return }
 
@@ -352,6 +356,10 @@ public enum OpenClawConfig {
         guard let topModel = orderedModels.first else { return }
         let fallbackModels = Array(orderedModels.dropFirst())
         let enabledScopes = Set(enabled.map(\.scope))
+
+        // Ensure keyless providers (like Ollama) have their auth profile
+        // without touching the Keychain
+        syncKeylessProfiles(policies: enabled)
 
         syncProviderDefinitions(enabledScopes: enabledScopes)
 
@@ -481,6 +489,67 @@ public enum OpenClawConfig {
         restartGateway()
     }
 
+    /// Ensure keyless providers (like Ollama) have an auth profile entry
+    /// without ever touching the Keychain. This prevents `needsAuthProfileSync`
+    /// from returning `true` just because a keyless provider is missing.
+    private static func syncKeylessProfiles(policies: [ScopePolicy]) {
+        let keyless = policies.filter { !requiresKey(scope: $0.scope) }
+        guard !keyless.isEmpty else { return }
+
+        // Read existing auth-profiles
+        var authDoc: [String: Any]
+        if let data = readAuthProfiles(),
+           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            authDoc = parsed
+        } else {
+            authDoc = [
+                "version": 1,
+                "profiles": [:] as [String: Any],
+                "lastGood": [:] as [String: Any],
+                "usageStats": [:] as [String: Any],
+            ]
+        }
+
+        var profiles = authDoc["profiles"] as? [String: Any] ?? [:]
+        var lastGood = authDoc["lastGood"] as? [String: Any] ?? [:]
+        var usageStats = authDoc["usageStats"] as? [String: Any] ?? [:]
+        var changed = false
+
+        for policy in keyless {
+            guard let provider = scopeToProvider[policy.scope] else { continue }
+            let profileKey = "\(provider):default"
+
+            // Only add if missing — never overwrite an existing profile
+            if profiles[profileKey] == nil {
+                profiles[profileKey] = [
+                    "type": "none",
+                    "provider": provider,
+                ] as [String: Any]
+                lastGood[provider] = profileKey
+                usageStats[profileKey] = [
+                    "lastUsed": 0,
+                    "errorCount": 0,
+                ] as [String: Any]
+                changed = true
+                logger.info("Added keyless profile for \(provider)")
+            }
+        }
+
+        guard changed else { return }
+
+        authDoc["profiles"] = profiles
+        authDoc["lastGood"] = lastGood
+        authDoc["usageStats"] = usageStats
+
+        do {
+            let data = try JSONSerialization.data(withJSONObject: authDoc, options: [.prettyPrinted, .sortedKeys])
+            try writeAuthProfiles(data)
+            logger.info("Updated auth-profiles.json with keyless providers")
+        } catch {
+            logger.error("Failed to write keyless profiles: \(error)")
+        }
+    }
+
     // MARK: - Gateway Restart
 
     /// Restart OpenClaw's gateway so it reloads config from disk.
@@ -488,7 +557,6 @@ public enum OpenClawConfig {
     private static func restartGateway() {
         DispatchQueue.global(qos: .utility).async {
             if connectionSettings.mode == .remote {
-                // Remote: restart via SSH
                 do {
                     let result = try RemoteShell.execute(
                         command: "bash -lc 'openclaw gateway restart'",
@@ -497,13 +565,12 @@ public enum OpenClawConfig {
                     if result.exitCode == 0 {
                         logger.info("Restarted remote OpenClaw gateway")
                     } else {
-                        logger.warning("Remote OpenClaw gateway restart exited with \(result.exitCode): \(result.stderr)")
+                        logger.warning("Remote gateway restart exited \(result.exitCode)")
                     }
                 } catch {
                     logger.warning("Could not restart remote OpenClaw gateway: \(error.localizedDescription)")
                 }
             } else {
-                // Local: run via login shell so PATH includes /opt/homebrew/bin etc.
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: "/bin/bash")
                 process.arguments = ["-lc", "openclaw gateway restart"]
@@ -512,11 +579,7 @@ public enum OpenClawConfig {
                 do {
                     try process.run()
                     process.waitUntilExit()
-                    if process.terminationStatus == 0 {
-                        logger.info("Restarted OpenClaw gateway")
-                    } else {
-                        logger.warning("OpenClaw gateway restart exited with \(process.terminationStatus)")
-                    }
+                    logger.info("Restarted OpenClaw gateway")
                 } catch {
                     logger.warning("Could not restart OpenClaw gateway: \(error.localizedDescription)")
                 }

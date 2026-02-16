@@ -1,8 +1,8 @@
 {
-  "version": "1.4.2",
+  "version": "1.5.0",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "UI Improvements\n\u2022 Scrollable release notes in the update window\n\u2022 Fix text cutoff in Local/Remote info modal\n\u2022 Settings Save no longer triggers Keychain prompts when nothing changed\n\u2022 Website and contact links added to Settings and FAQ",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.4.2/ClawAPI-1.4.2.zip",
-  "sha256": "86b01920935f933c91169f8fd02add30c5bb3313ddaaf31476801c643e8a82ea"
+  "releaseNotes": "Signed & Notarized\n• App is now signed with Apple Developer ID and notarized\n• No more Gatekeeper warnings on install\n• Touch ID support for Keychain access\n\nBug Fixes\n• Fixed unnecessary Keychain password prompts when switching models\n• Keyless providers (Ollama) no longer trigger Keychain access\n• Gateway restart reliability improvements",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.5.0/ClawAPI-1.5.0.zip",
+  "sha256": "170ccb4fe61b0a200849db12f8eaa425bbbf6a23655c3e13883662cea31dc28e"
 }
