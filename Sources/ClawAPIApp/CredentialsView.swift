@@ -10,7 +10,9 @@ struct CredentialsView: View {
     @State private var selectedPolicy: ScopePolicy?
     @State private var showingDeleteAlert = false
     @State private var policyToDelete: ScopePolicy?
+    @State private var showModelSwitchTip = false
     @AppStorage("dismissedKeychainBanner") private var dismissedKeychainBanner = false
+    @AppStorage("dismissedModelSwitchTip") private var dismissedModelSwitchTip = false
 
     var filteredPolicies: [ScopePolicy] {
         if searchText.isEmpty {
@@ -124,15 +126,22 @@ struct CredentialsView: View {
             // This prevents ContentUnavailableView from hijacking the VStack layout.
             List(selection: $selectedPolicy) {
                 ForEach(filteredPolicies) { policy in
-                    ScopePolicyRow(policy: policy, store: store) {
+                    ScopePolicyRow(policy: policy, store: store, onDelete: {
                         policyToDelete = policy
                         showingDeleteAlert = true
-                    }
+                    }, onModelSwitch: {
+                        if !dismissedModelSwitchTip {
+                            showModelSwitchTip = true
+                        }
+                    })
                     .tag(policy)
                 }
                 .onMove { source, destination in
                     guard searchText.isEmpty else { return }
                     store.movePolicies(fromOffsets: source, toOffset: destination)
+                    if !dismissedModelSwitchTip {
+                        showModelSwitchTip = true
+                    }
                 }
             }
             .listStyle(.inset(alternatesRowBackgrounds: true))
@@ -157,6 +166,97 @@ struct CredentialsView: View {
         } message: { policy in
             Text("Are you sure you want to delete \"\(policy.serviceName)\"? This cannot be undone.")
         }
+        .sheet(isPresented: $showModelSwitchTip) {
+            ModelSwitchInfoSheet {
+                selectedTab = .model
+            }
+        }
+    }
+}
+
+// MARK: - Model Switch Info Sheet
+
+private struct ModelSwitchInfoSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("dismissedModelSwitchTip") private var dismissedForever = false
+    var onCheckSync: () -> Void = {}
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 28)
+
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(.system(size: 40))
+                .foregroundStyle(.orange)
+                .padding(.bottom, 14)
+
+            Text("Model Updated")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .padding(.bottom, 8)
+
+            Text("Your new model has been synced to OpenClaw.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.bottom, 24)
+
+            // Instructions
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "info.circle.fill")
+                        .foregroundStyle(.blue)
+                        .frame(width: 20)
+                    Text("Existing chat sessions will continue using their original model.")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "bubble.left.fill")
+                        .foregroundStyle(.green)
+                        .frame(width: 20)
+                    Text("To use the new model, start a **new session** in OpenClaw by typing **`/new`** in the chat.")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .foregroundStyle(.purple)
+                        .frame(width: 20)
+                    Text("Verify the active model anytime in the **Sync** tab.")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .font(.callout)
+            .padding(20)
+            .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 10))
+            .padding(.horizontal, 32)
+
+            Spacer()
+
+            Toggle("Don't show this again", isOn: $dismissedForever)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 16)
+
+            HStack(spacing: 12) {
+                Button("Check Sync") {
+                    dismiss()
+                    onCheckSync()
+                }
+                .controlSize(.large)
+
+                Button("Got It") {
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .controlSize(.large)
+            }
+
+            Spacer().frame(height: 20)
+        }
+        .frame(width: 500, height: 420)
     }
 }
 
@@ -166,6 +266,7 @@ struct ScopePolicyRow: View {
     let policy: ScopePolicy
     let store: PolicyStore
     var onDelete: () -> Void
+    var onModelSwitch: () -> Void = {}
     @State private var showAdminKeySheet = false
     /// Bumped when the model catalog loads asynchronously, forcing a re-render.
     @State private var catalogGeneration = 0
@@ -258,7 +359,10 @@ struct ScopePolicyRow: View {
                                 .foregroundStyle(.secondary)
                             Picker(selection: Binding(
                                 get: { currentModelId },
-                                set: { store.selectModel($0, for: policy) }
+                                set: {
+                                    store.selectModel($0, for: policy)
+                                    onModelSwitch()
+                                }
                             )) {
                                 ForEach(availableModels) { model in
                                     Text(model.name).tag(model.id)

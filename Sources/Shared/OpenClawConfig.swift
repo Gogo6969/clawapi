@@ -380,7 +380,6 @@ public enum OpenClawConfig {
             logger.error("Failed to set primary model: \(error)")
         }
 
-        restartGateway()
     }
 
     /// Sync ClawAPI's enabled providers into OpenClaw's auth-profiles.json.
@@ -493,7 +492,6 @@ public enum OpenClawConfig {
             }
         }
 
-        restartGateway()
     }
 
     /// Ensure keyless providers (like Ollama) have an auth profile entry
@@ -554,43 +552,6 @@ public enum OpenClawConfig {
             logger.info("Updated auth-profiles.json with keyless providers")
         } catch {
             logger.error("Failed to write keyless profiles: \(error)")
-        }
-    }
-
-    // MARK: - Gateway Restart
-
-    /// Restart OpenClaw's gateway so it reloads config from disk.
-    /// Runs in background to avoid blocking the UI.
-    private static func restartGateway() {
-        DispatchQueue.global(qos: .utility).async {
-            if connectionSettings.mode == .remote {
-                do {
-                    let result = try RemoteShell.execute(
-                        command: "bash -lc 'openclaw gateway restart'",
-                        settings: connectionSettings
-                    )
-                    if result.exitCode == 0 {
-                        logger.info("Restarted remote OpenClaw gateway")
-                    } else {
-                        logger.warning("Remote gateway restart exited \(result.exitCode)")
-                    }
-                } catch {
-                    logger.warning("Could not restart remote OpenClaw gateway: \(error.localizedDescription)")
-                }
-            } else {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/bin/bash")
-                process.arguments = ["-lc", "openclaw gateway restart"]
-                process.standardOutput = FileHandle.nullDevice
-                process.standardError = FileHandle.nullDevice
-                do {
-                    try process.run()
-                    process.waitUntilExit()
-                    logger.info("Restarted OpenClaw gateway")
-                } catch {
-                    logger.warning("Could not restart OpenClaw gateway: \(error.localizedDescription)")
-                }
-            }
         }
     }
 

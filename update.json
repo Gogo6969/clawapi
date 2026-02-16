@@ -1,8 +1,8 @@
 {
-  "version": "1.5.0",
+  "version": "1.5.1",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "Signed & Notarized\n• App is now signed with Apple Developer ID and notarized\n• No more Gatekeeper warnings on install\n• Touch ID support for Keychain access\n\nBug Fixes\n• Fixed unnecessary Keychain password prompts when switching models\n• Keyless providers (Ollama) no longer trigger Keychain access\n• Gateway restart reliability improvements",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.5.0/ClawAPI-1.5.0.zip",
-  "sha256": "d0169bf0dfaa3e83a1fa8554ac313e8a67fa313a46646a4587dca8c387ca1a50"
+  "releaseNotes": "Model Switch Improvements\n• Popup notification when switching models — explains how to start a new session\n• \"Don't show this again\" option for the popup\n• Popup also triggers on drag-and-drop reorder\n• \"Check Sync\" button to verify active model in the Sync tab\n• Removed gateway restart on model switch — no more disconnects in OpenClaw",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.5.1/ClawAPI-1.5.1.zip",
+  "sha256": "d6739c4f9c6e501d6717b2a13cc134122ca7664fff462688ed25dc7c78330344"
 }
