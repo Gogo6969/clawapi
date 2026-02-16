@@ -4,5 +4,5 @@
   "minimumSystemVersion": "14.0",
   "releaseNotes": "Signed & Notarized\n• App is now signed with Apple Developer ID and notarized\n• No more Gatekeeper warnings on install\n• Touch ID support for Keychain access\n\nBug Fixes\n• Fixed unnecessary Keychain password prompts when switching models\n• Keyless providers (Ollama) no longer trigger Keychain access\n• Gateway restart reliability improvements",
   "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.5.0/ClawAPI-1.5.0.zip",
-  "sha256": "170ccb4fe61b0a200849db12f8eaa425bbbf6a23655c3e13883662cea31dc28e"
+  "sha256": "430e9e31f25be51a0f26533c877f268f062dbb02c512d5f7c702423b0252b72d"
 }
