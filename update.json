@@ -1,8 +1,8 @@
 {
-  "version": "1.6.0",
+  "version": "1.6.1",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "Touch ID & Bug Fixes\n• Touch ID authentication for adding and deleting providers and API keys\n• Password fallback on Macs without Touch ID\n• Model switch popup only triggers when the model actually changes\n• All previous safety features: JSON validation, .bak backups, sync error banner, gateway reload",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.6.0/ClawAPI-1.6.0.zip",
-  "sha256": "832b7c80a27bf4bdba6a7ddeddd5e02ba916d49786061c40901a8ae937ff8e84"
+  "releaseNotes": "New Provider\n• LM Studio added as a local LLM provider (no API key required)\n• Auto-discovers loaded models from LM Studio's API\n• Works alongside Ollama and cloud providers",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.6.1/ClawAPI-1.6.1.zip",
+  "sha256": "edb943f860464988b7133c1eec978e81c3c16348b034d5816b759550a885d298"
 }

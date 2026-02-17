@@ -181,6 +181,16 @@ public enum ServiceCatalog {
             keyPlaceholder: "",
             requiresKey: false
         ),
+        ServiceTemplate(
+            name: "LM Studio",
+            scope: "lmstudio",
+            domains: ["localhost"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "",
+            requiresKey: false
+        ),
     ]
 
     /// Find a template by scope or name (case-insensitive).
@@ -209,6 +219,7 @@ public enum ServiceCatalog {
         "opencode": "opencode",
         "vercel-ai-gateway": "vercel-ai-gateway",
         "ollama": "ollama",
+        "lmstudio": "lmstudio",
         "claude": "anthropic",  // Legacy alias — some policies use "claude" instead of "anthropic"
     ]
 
@@ -365,6 +376,12 @@ public enum ServiceCatalog {
             catalog["ollama"] = ollamaModels
         }
 
+        // LM Studio is local — fetch models from its OpenAI-compatible API
+        let lmStudioModels = fetchLMStudioModels()
+        if !lmStudioModels.isEmpty {
+            catalog["lmstudio"] = lmStudioModels
+        }
+
         return catalog
     }
 
@@ -396,6 +413,46 @@ public enum ServiceCatalog {
                 // Use "ollama/<name>" as the ID for consistency with other providers
                 let id = "ollama/\(name)"
                 options.append(ModelOption(id: id, name: name))
+            }
+
+            // Mark first as default
+            if !options.isEmpty {
+                options[0] = ModelOption(id: options[0].id, name: options[0].name, isDefault: true)
+            }
+
+            result = options
+        }
+        task.resume()
+        semaphore.wait()
+
+        return result
+    }
+
+    /// Fetch locally available models from LM Studio's OpenAI-compatible API (http://localhost:1234/v1/models).
+    /// Returns an empty array if LM Studio isn't running or has no models loaded.
+    private static func fetchLMStudioModels() -> [ModelOption] {
+        guard let url = URL(string: "http://localhost:1234/v1/models") else { return [] }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 3  // Don't hang if LM Studio isn't running
+
+        nonisolated(unsafe) var result: [ModelOption] = []
+        let semaphore = DispatchSemaphore(value: 0)
+
+        let task = URLSession.shared.dataTask(with: request) { data, _, _ in
+            defer { semaphore.signal() }
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let models = json["data"] as? [[String: Any]] else {
+                return
+            }
+
+            var options: [ModelOption] = []
+            for model in models {
+                guard let modelId = model["id"] as? String else { continue }
+                // Use "lmstudio/<id>" as the ID for consistency with other providers
+                let id = "lmstudio/\(modelId)"
+                options.append(ModelOption(id: id, name: modelId))
             }
 
             // Mark first as default
