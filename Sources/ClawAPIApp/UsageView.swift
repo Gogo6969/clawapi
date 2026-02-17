@@ -129,25 +129,39 @@ final class UsageViewModel: ObservableObject {
     }
 
     func saveAdminKey(_ key: String, for policy: ScopePolicy, store: PolicyStore) {
-        do {
-            try keychain.saveAdminKey(key, forScope: policy.scope)
-            var updated = policy
-            updated.hasAdminSecret = true
-            store.updatePolicy(updated)
-            adminKeyTarget = nil
-            Task { await refresh(policy: updated) }
-        } catch {
-            // Error will be visible next time they try to query
+        Task {
+            guard await KeychainService.authenticateWithBiometrics(
+                reason: "Authenticate to save admin key"
+            ) else { return }
+            do {
+                try keychain.saveAdminKey(key, forScope: policy.scope)
+                var updated = policy
+                updated.hasAdminSecret = true
+                await MainActor.run {
+                    store.updatePolicy(updated)
+                    adminKeyTarget = nil
+                }
+                await refresh(policy: updated)
+            } catch {
+                // Error will be visible next time they try to query
+            }
         }
     }
 
     func removeAdminKey(for policy: ScopePolicy, store: PolicyStore) {
-        try? keychain.deleteAdminKey(forScope: policy.scope)
-        var updated = policy
-        updated.hasAdminSecret = false
-        store.updatePolicy(updated)
-        results[policy.scope] = nil
-        adminKeyTarget = nil
+        Task {
+            guard await KeychainService.authenticateWithBiometrics(
+                reason: "Authenticate to remove admin key"
+            ) else { return }
+            try? keychain.deleteAdminKey(forScope: policy.scope)
+            await MainActor.run {
+                var updated = policy
+                updated.hasAdminSecret = false
+                store.updatePolicy(updated)
+                results[policy.scope] = nil
+                adminKeyTarget = nil
+            }
+        }
     }
 }
 

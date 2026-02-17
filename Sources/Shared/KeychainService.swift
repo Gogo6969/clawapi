@@ -1,4 +1,5 @@
 import Foundation
+import LocalAuthentication
 import Security
 import OSLog
 
@@ -35,6 +36,33 @@ public struct KeychainService: Sendable {
 
     public init(accessGroup: String = "com.clawapi.shared") {
         self.accessGroup = accessGroup
+    }
+
+    // MARK: - Biometric Authentication
+
+    /// Authenticate using Touch ID (or password fallback on Macs without Touch ID).
+    /// Call this before sensitive Keychain operations (save/delete) in the UI layer.
+    /// Returns `true` if authenticated, `false` if denied or unavailable.
+    public static func authenticateWithBiometrics(reason: String = "Authenticate to manage API keys") async -> Bool {
+        let context = LAContext()
+        var error: NSError?
+
+        // Check if biometrics (Touch ID) or device passcode is available
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            logger.warning("Biometric auth not available: \(error?.localizedDescription ?? "unknown")")
+            return true  // Allow operation if no auth mechanism available
+        }
+
+        do {
+            let success = try await context.evaluatePolicy(
+                .deviceOwnerAuthentication,
+                localizedReason: reason
+            )
+            return success
+        } catch {
+            logger.info("Biometric auth denied: \(error.localizedDescription)")
+            return false
+        }
     }
 
     // MARK: - Save

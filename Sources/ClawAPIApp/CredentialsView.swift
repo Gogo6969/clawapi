@@ -189,7 +189,12 @@ struct CredentialsView: View {
         }
         .alert("Delete Provider", isPresented: $showingDeleteAlert, presenting: policyToDelete) { policy in
             Button("Delete", role: .destructive) {
-                store.removePolicy(policy)
+                Task {
+                    guard await KeychainService.authenticateWithBiometrics(
+                        reason: "Authenticate to delete \"\(policy.serviceName)\""
+                    ) else { return }
+                    store.removePolicy(policy)
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: { policy in
@@ -388,8 +393,9 @@ struct ScopePolicyRow: View {
                                 .foregroundStyle(.secondary)
                             Picker(selection: Binding(
                                 get: { currentModelId },
-                                set: {
-                                    store.selectModel($0, for: policy)
+                                set: { newModel in
+                                    guard newModel != currentModelId else { return }
+                                    store.selectModel(newModel, for: policy)
                                     onModelSwitch()
                                 }
                             )) {
@@ -498,18 +504,28 @@ struct ScopePolicyRow: View {
             AdminKeySheet(
                 policy: policy,
                 onSave: { key in
-                    let keychain = KeychainService()
-                    try? keychain.saveAdminKey(key, forScope: policy.scope)
-                    var updated = policy
-                    updated.hasAdminSecret = true
-                    store.updatePolicy(updated)
+                    Task {
+                        guard await KeychainService.authenticateWithBiometrics(
+                            reason: "Authenticate to save admin key"
+                        ) else { return }
+                        let keychain = KeychainService()
+                        try? keychain.saveAdminKey(key, forScope: policy.scope)
+                        var updated = policy
+                        updated.hasAdminSecret = true
+                        store.updatePolicy(updated)
+                    }
                 },
                 onRemove: {
-                    let keychain = KeychainService()
-                    try? keychain.deleteAdminKey(forScope: policy.scope)
-                    var updated = policy
-                    updated.hasAdminSecret = false
-                    store.updatePolicy(updated)
+                    Task {
+                        guard await KeychainService.authenticateWithBiometrics(
+                            reason: "Authenticate to remove admin key"
+                        ) else { return }
+                        let keychain = KeychainService()
+                        try? keychain.deleteAdminKey(forScope: policy.scope)
+                        var updated = policy
+                        updated.hasAdminSecret = false
+                        store.updatePolicy(updated)
+                    }
                 }
             )
         }

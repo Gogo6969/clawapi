@@ -1,8 +1,8 @@
 {
-  "version": "1.5.2",
+  "version": "1.6.0",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "Safety & Reliability\n• Gateway Reload button in the Sync tab — manually send SIGHUP to pick up config changes\n• JSON validation before writing config — prevents corrupt openclaw.json\n• Automatic .bak backup before every config write — easy recovery\n• Red error banner in Providers tab when a sync write fails\n• Updated README and new User Guide",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.5.2/ClawAPI-1.5.2.zip",
-  "sha256": "d0815866f57cdb78a0a83d68fe032476447bcdb00c98fca300a2cd3f0e874f22"
+  "releaseNotes": "Touch ID & Bug Fixes\n• Touch ID authentication for adding and deleting providers and API keys\n• Password fallback on Macs without Touch ID\n• Model switch popup only triggers when the model actually changes\n• All previous safety features: JSON validation, .bak backups, sync error banner, gateway reload",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.6.0/ClawAPI-1.6.0.zip",
+  "sha256": "832b7c80a27bf4bdba6a7ddeddd5e02ba916d49786061c40901a8ae937ff8e84"
 }

@@ -188,6 +188,19 @@ struct AddScopeSheet: View {
     }
 
     private func addScope() {
+        Task {
+            // Require Touch ID / password before saving a secret to the Keychain
+            if hasSecret {
+                guard await KeychainService.authenticateWithBiometrics(
+                    reason: "Authenticate to save API key"
+                ) else { return }
+            }
+
+            await MainActor.run { addScopeAfterAuth() }
+        }
+    }
+
+    private func addScopeAfterAuth() {
         let domains = domainsText
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
