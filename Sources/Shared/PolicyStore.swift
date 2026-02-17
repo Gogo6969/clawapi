@@ -8,10 +8,13 @@ public final class PolicyStore: ObservableObject, Sendable {
     @Published public var policies: [ScopePolicy] = []
     @Published public var auditEntries: [AuditEntry] = []
     @Published public var pendingRequests: [PendingRequest] = []
+    /// The most recent sync error message, or nil if no error. Auto-clears after 10 seconds.
+    @Published public var syncError: String?
 
     private let policiesURL: URL
     private let auditURL: URL
     private let pendingURL: URL
+    private var syncErrorObserver: Any?
 
     /// Keychain for syncing to OpenClaw on save.
     public let keychain = KeychainService()
@@ -24,6 +27,23 @@ public final class PolicyStore: ObservableObject, Sendable {
 
         ensureDirectory(base)
         load()
+
+        // Listen for sync errors from OpenClawConfig
+        syncErrorObserver = NotificationCenter.default.addObserver(
+            forName: OpenClawConfig.syncErrorNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let message = notification.object as? String else { return }
+            Task { @MainActor [weak self] in
+                self?.syncError = message
+                // Auto-clear after 10 seconds
+                try? await Task.sleep(for: .seconds(10))
+                if self?.syncError == message {
+                    self?.syncError = nil
+                }
+            }
+        }
 
         // Only access Keychain if auth profiles actually need syncing.
         // This avoids unnecessary macOS permission prompts on every launch

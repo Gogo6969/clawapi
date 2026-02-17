@@ -1,8 +1,8 @@
 {
-  "version": "1.5.1",
+  "version": "1.5.2",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "Model Switch Improvements\n• Popup notification when switching models — explains how to start a new session\n• \"Don't show this again\" option for the popup\n• Popup also triggers on drag-and-drop reorder\n• \"Check Sync\" button to verify active model in the Sync tab\n• Removed gateway restart on model switch — no more disconnects in OpenClaw",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.5.1/ClawAPI-1.5.1.zip",
-  "sha256": "d6739c4f9c6e501d6717b2a13cc134122ca7664fff462688ed25dc7c78330344"
+  "releaseNotes": "Safety & Reliability\n• JSON validation before writing config — prevents corrupt openclaw.json\n• Automatic .bak backup before every config write — easy recovery\n• Red error banner in Providers tab when a sync write fails\n• Gateway Reload button in the Sync tab — manually send SIGHUP to pick up config changes\n• Updated README and new User Guide",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.5.2/ClawAPI-1.5.2.zip",
+  "sha256": "d0815866f57cdb78a0a83d68fe032476447bcdb00c98fca300a2cd3f0e874f22"
 }

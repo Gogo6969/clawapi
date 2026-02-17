@@ -7,6 +7,17 @@ private let logger = Logger(subsystem: "com.clawapi", category: "OpenClawConfig"
 /// Supports both local and remote (SSH) modes via ConnectionSettings.
 public enum OpenClawConfig {
 
+    /// Posted when a sync write fails. The notification's `object` is the error message (String).
+    public static let syncErrorNotification = Notification.Name("OpenClawConfigSyncError")
+
+    /// Post a sync error notification on the main thread.
+    private static func postSyncError(_ message: String) {
+        logger.error("Sync error: \(message)")
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: syncErrorNotification, object: message)
+        }
+    }
+
     /// Current connection settings. Loaded once at startup, updated when the user changes settings.
     nonisolated(unsafe) public static var connectionSettings = ConnectionSettings.load()
 
@@ -31,16 +42,32 @@ public enum OpenClawConfig {
     }
 
     /// Write openclaw.json to local or remote.
+    /// Creates a `.bak` backup before overwriting and validates JSON before writing.
     private static func writeConfig(_ data: Data) throws {
+        // Validate: data must be valid JSON
+        guard (try? JSONSerialization.jsonObject(with: data)) != nil else {
+            throw ConfigError.parseFailed
+        }
+
         if connectionSettings.mode == .remote {
+            // Back up remote file before overwriting
+            _ = try? RemoteShell.execute(
+                command: "cp \(connectionSettings.remoteConfigPath) \(connectionSettings.remoteConfigPath).bak",
+                settings: connectionSettings
+            )
             try RemoteShell.writeFile(
                 data: data,
                 path: connectionSettings.remoteConfigPath,
                 settings: connectionSettings
             )
         } else {
+            // Back up local file before overwriting
+            let bakURL = configURL.appendingPathExtension("bak")
+            try? FileManager.default.removeItem(at: bakURL)
+            try? FileManager.default.copyItem(at: configURL, to: bakURL)
             try data.write(to: configURL, options: .atomic)
         }
+        logger.info("Wrote openclaw.json (backup saved as .bak)")
     }
 
     /// Read auth-profiles.json from local or remote.
@@ -55,16 +82,32 @@ public enum OpenClawConfig {
     }
 
     /// Write auth-profiles.json to local or remote.
+    /// Creates a `.bak` backup before overwriting and validates JSON before writing.
     private static func writeAuthProfiles(_ data: Data) throws {
+        // Validate: data must be valid JSON
+        guard (try? JSONSerialization.jsonObject(with: data)) != nil else {
+            throw ConfigError.parseFailed
+        }
+
         if connectionSettings.mode == .remote {
+            // Back up remote file before overwriting
+            _ = try? RemoteShell.execute(
+                command: "cp \(connectionSettings.remoteAuthProfilesPath) \(connectionSettings.remoteAuthProfilesPath).bak",
+                settings: connectionSettings
+            )
             try RemoteShell.writeFile(
                 data: data,
                 path: connectionSettings.remoteAuthProfilesPath,
                 settings: connectionSettings
             )
         } else {
+            // Back up local file before overwriting
+            let bakURL = authProfilesURL.appendingPathExtension("bak")
+            try? FileManager.default.removeItem(at: bakURL)
+            try? FileManager.default.copyItem(at: authProfilesURL, to: bakURL)
             try data.write(to: authProfilesURL, options: .atomic)
         }
+        logger.info("Wrote auth-profiles.json (backup saved as .bak)")
     }
 
     // MARK: - Read
@@ -377,7 +420,7 @@ public enum OpenClawConfig {
             try setPrimaryModelAndFallbacks(topModel, fallbacks: fallbackModels,
                                             managedPrefixes: managedProviderPrefixes(from: enabledScopes))
         } catch {
-            logger.error("Failed to set primary model: \(error)")
+            postSyncError("Failed to set primary model: \(error.localizedDescription)")
         }
 
     }
@@ -476,7 +519,7 @@ public enum OpenClawConfig {
             try writeAuthProfiles(data)
             logger.info("Wrote OpenClaw auth-profiles.json")
         } catch {
-            logger.error("Failed to write auth-profiles.json: \(error)")
+            postSyncError("Failed to write auth-profiles.json: \(error.localizedDescription)")
             return
         }
 
@@ -488,7 +531,7 @@ public enum OpenClawConfig {
                 try setPrimaryModelAndFallbacks(topModel, fallbacks: fallbackModels,
                                                 managedPrefixes: managedProviderPrefixes(from: enabledScopes))
             } catch {
-                logger.error("Failed to set primary model: \(error)")
+                postSyncError("Failed to set primary model: \(error.localizedDescription)")
             }
         }
 
@@ -551,7 +594,74 @@ public enum OpenClawConfig {
             try writeAuthProfiles(data)
             logger.info("Updated auth-profiles.json with keyless providers")
         } catch {
-            logger.error("Failed to write keyless profiles: \(error)")
+            postSyncError("Failed to write keyless profiles: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Gateway Restart
+
+    /// Manually restart the OpenClaw gateway so it reloads config from disk.
+    /// Uses SIGHUP for instant hot-reload without dropping WebSocket connections.
+    /// Falls back to a full restart if SIGHUP fails.
+    /// Returns true if the restart signal was sent successfully.
+    @discardableResult
+    public static func restartGateway() -> Bool {
+        guard isInstalled else { return false }
+
+        if connectionSettings.mode == .remote {
+            do {
+                let sighup = try RemoteShell.execute(
+                    command: "bash -lc 'pkill -HUP -f openclaw-gateway'",
+                    settings: connectionSettings
+                )
+                if sighup.exitCode == 0 {
+                    logger.info("Sent SIGHUP to remote OpenClaw gateway")
+                    return true
+                }
+                let result = try RemoteShell.execute(
+                    command: "bash -lc 'openclaw gateway restart'",
+                    settings: connectionSettings
+                )
+                if result.exitCode == 0 {
+                    logger.info("Restarted remote OpenClaw gateway (fallback)")
+                    return true
+                }
+                logger.warning("Remote gateway restart exited \(result.exitCode)")
+            } catch {
+                logger.warning("Could not reload remote OpenClaw gateway: \(error.localizedDescription)")
+            }
+            return false
+        } else {
+            let sighup = Process()
+            sighup.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+            sighup.arguments = ["-HUP", "-f", "openclaw-gateway"]
+            sighup.standardOutput = FileHandle.nullDevice
+            sighup.standardError = FileHandle.nullDevice
+            do {
+                try sighup.run()
+                sighup.waitUntilExit()
+                if sighup.terminationStatus == 0 {
+                    logger.info("Sent SIGHUP to OpenClaw gateway (hot reload)")
+                    return true
+                }
+            } catch { }
+
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/bash")
+            process.arguments = ["-lc", "openclaw gateway restart"]
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            do {
+                try process.run()
+                process.waitUntilExit()
+                if process.terminationStatus == 0 {
+                    logger.info("Restarted OpenClaw gateway (fallback)")
+                    return true
+                }
+            } catch {
+                logger.warning("Could not restart OpenClaw gateway: \(error.localizedDescription)")
+            }
+            return false
         }
     }
 
@@ -600,7 +710,7 @@ public enum OpenClawConfig {
             let newData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys])
             try writeConfig(newData)
         } catch {
-            logger.error("Failed to write provider definitions: \(error)")
+            postSyncError("Failed to write provider definitions: \(error.localizedDescription)")
         }
     }
 

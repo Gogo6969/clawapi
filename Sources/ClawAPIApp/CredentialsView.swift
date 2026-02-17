@@ -96,6 +96,35 @@ struct CredentialsView: View {
                 .background(Color.blue.opacity(0.06))
             }
 
+            // Sync error banner
+            if let error = store.syncError {
+                HStack(spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.body)
+                        .foregroundStyle(.red)
+
+                    Text("Sync failed: \(error)")
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer()
+
+                    Button {
+                        withAnimation { store.syncError = nil }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Dismiss")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.red.opacity(0.08))
+            }
+
             Divider()
 
             // Search bar

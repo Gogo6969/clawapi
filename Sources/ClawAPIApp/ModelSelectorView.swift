@@ -3,6 +3,11 @@ import Shared
 
 struct ModelSelectorView: View {
     @EnvironmentObject var store: PolicyStore
+    @State private var gatewayStatus: GatewayRestartStatus = .idle
+
+    private enum GatewayRestartStatus: Equatable {
+        case idle, restarting, success, failed
+    }
 
     private var enabledProviders: [ScopePolicy] {
         store.policies
@@ -92,6 +97,56 @@ struct ModelSelectorView: View {
                     }
                 }
 
+                // Gateway restart
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "arrow.clockwise.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(gatewayStatusColor)
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Gateway Reload")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Text(gatewayStatusText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Button {
+                            gatewayStatus = .restarting
+                            DispatchQueue.global(qos: .utility).async {
+                                let ok = OpenClawConfig.restartGateway()
+                                DispatchQueue.main.async {
+                                    gatewayStatus = ok ? .success : .failed
+                                    // Reset after 3 seconds
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                        gatewayStatus = .idle
+                                    }
+                                }
+                            }
+                        } label: {
+                            if gatewayStatus == .restarting {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .frame(width: 80)
+                            } else {
+                                Text("Restart")
+                                    .frame(width: 80)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(gatewayStatus == .success ? .green : gatewayStatus == .failed ? .red : .blue)
+                        .controlSize(.small)
+                        .disabled(gatewayStatus == .restarting || !OpenClawConfig.isInstalled)
+                    }
+                } footer: {
+                    Text("Sends a reload signal to the OpenClaw gateway. Use this if the gateway needs to pick up config changes.")
+                }
+
                 // Synced providers
                 Section {
                     if enabledProviders.isEmpty {
@@ -131,6 +186,24 @@ struct ModelSelectorView: View {
                 }
             }
             .listStyle(.inset(alternatesRowBackgrounds: true))
+        }
+    }
+
+    private var gatewayStatusColor: Color {
+        switch gatewayStatus {
+        case .idle: .blue
+        case .restarting: .orange
+        case .success: .green
+        case .failed: .red
+        }
+    }
+
+    private var gatewayStatusText: String {
+        switch gatewayStatus {
+        case .idle: "Reload the OpenClaw gateway to apply config changes"
+        case .restarting: "Sending reload signal..."
+        case .success: "Gateway reloaded successfully"
+        case .failed: "Gateway reload failed — is OpenClaw running?"
         }
     }
 }
