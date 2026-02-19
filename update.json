@@ -1,8 +1,8 @@
 {
-  "version": "1.7.2",
+  "version": "1.7.3",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "Fix\n• Remove stale clawapi:default auth profile that caused OpenClaw failover errors\n• Auto-cleanup unknown provider profiles during sync",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.7.2/ClawAPI.zip",
-  "sha256": "78f2da52df445ac3c065272639be760293dd296523aafe1e3c77da92d6a043a2"
+  "releaseNotes": "Improvements\n• Auto-check for updates every 4 hours (previously only on launch)\n• Remove stale auth profiles that confuse OpenClaw failover",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.7.3/ClawAPI.zip",
+  "sha256": "d99e6a0ed3e609626d176a3a2e0a0a807a535ffb8c049a0c5f51f9c1705a40b0"
 }

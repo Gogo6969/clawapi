@@ -172,12 +172,15 @@ struct ContentView: View {
             }
         }
         .task {
-            // Auto-check for updates on launch (silent, non-blocking)
+            // Auto-check for updates on launch + every 4 hours
             guard !ScreenshotMode.isEnabled else { return }
             try? await Task.sleep(for: .seconds(2)) // let the UI settle
-            await updateChecker.checkForUpdates()
-            if case .available = updateChecker.status {
-                showingUpdate = true
+            while !Task.isCancelled {
+                await updateChecker.checkForUpdates()
+                if case .available = updateChecker.status {
+                    showingUpdate = true
+                }
+                try? await Task.sleep(for: .seconds(4 * 60 * 60)) // re-check every 4 hours
             }
         }
         .sheet(isPresented: $showingAddScope) {
