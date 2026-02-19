@@ -525,6 +525,7 @@ public enum OpenClawConfig {
 
         // Remove profiles for providers that are no longer enabled
         let enabledScopes = Set(enabled.map(\.scope))
+        let enabledProviders = Set(enabled.compactMap { providerForScope($0.scope) })
         var checkedProviders = Set<String>()
         for (scope, provider) in scopeToProvider {
             guard !checkedProviders.contains(provider) else { continue }
@@ -543,6 +544,19 @@ public enum OpenClawConfig {
                 }
             }
             _ = scope
+        }
+
+        // Remove stale profiles that don't map to any known provider
+        // (e.g. "clawapi:default" — not a real AI provider, confuses OpenClaw failover).
+        let knownProviders = Set(scopeToProvider.values)
+        for key in Array(profiles.keys) {
+            let provider = key.replacingOccurrences(of: ":default", with: "")
+            if !knownProviders.contains(provider) && !enabledProviders.contains(provider) {
+                profiles.removeValue(forKey: key)
+                lastGood.removeValue(forKey: provider)
+                usageStats.removeValue(forKey: key)
+                logger.info("Removed unknown provider profile \(key) from OpenClaw auth")
+            }
         }
 
         authDoc["profiles"] = profiles
