@@ -1,8 +1,8 @@
 {
-  "version": "1.7.0",
+  "version": "1.7.1",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "Clean Slate & Provider Fixes\n• Clean Slate: remove all fallbacks, keep only your #1 provider (with backup/restore)\n• Fix provider syncing for all 16 providers (MiniMax, Groq, Cerebras, etc.)\n• Touch ID keychain: API keys now require Touch ID to read\n• No more double-prompt (Touch ID + password)",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.7.0/ClawAPI.zip",
-  "sha256": "e010c36119f6001fabc40f8ef44fcf67090b5de5c34ed21ec2c169b82b9c553f"
+  "releaseNotes": "Hotfix\n• Fix Keychain save error (-34018) when adding or updating API keys\n• Add keychain-access-groups entitlement for Touch ID protected keys",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.7.1/ClawAPI.zip",
+  "sha256": "71e5e64f7efcec95d1215d765207681ef0ec98b43cfc2db6ef97fcd728e67873"
 }
