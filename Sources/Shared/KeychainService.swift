@@ -71,12 +71,26 @@ public struct KeychainService: Sendable {
         // Delete any existing item first
         try? delete(forScope: scope)
 
+        // Use SecAccessControl with .userPresence so reads require Touch ID
+        // (with automatic password fallback on Macs without Touch ID).
+        var cfError: Unmanaged<CFError>?
+        guard let access = SecAccessControlCreateWithFlags(
+            nil,
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            .userPresence,
+            &cfError
+        ) else {
+            let desc = cfError?.takeRetainedValue().localizedDescription ?? "unknown"
+            logger.error("Failed to create access control: \(desc)")
+            throw KeychainError.saveFailed(errSecParam)
+        }
+
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "ClawAPI",
             kSecAttrAccount as String: scope,
             kSecValueData as String: secret,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            kSecAttrAccessControl as String: access,
         ]
 
         #if !DEBUG

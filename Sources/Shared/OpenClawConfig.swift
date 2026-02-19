@@ -305,7 +305,19 @@ public enum OpenClawConfig {
         "anthropic": "anthropic",
         "claude": "anthropic",
         "xai": "xai",
+        "google-ai": "google",
+        "mistral": "mistral",
+        "groq": "groq",
+        "openrouter": "openrouter",
+        "cerebras": "cerebras",
+        "huggingface": "huggingface",
+        "kimi-coding": "kimi-coding",
+        "minimax": "minimax",
+        "zai": "zai",
+        "opencode": "opencode",
+        "vercel-ai-gateway": "vercel-ai-gateway",
         "ollama": "ollama",
+        "lmstudio": "lmstudio",
     ]
 
     /// Look up the OpenClaw provider for a scope, matching on the base name
@@ -318,10 +330,22 @@ public enum OpenClawConfig {
 
     /// Required provider routing info: baseUrl and API type.
     private static let providerConfig: [String: (baseUrl: String, api: String)] = [
-        "openai":    ("https://api.openai.com/v1", "openai-completions"),
-        "anthropic": ("https://api.anthropic.com",  "anthropic-messages"),
-        "xai":       ("https://api.x.ai/v1",        "openai-completions"),
-        "ollama":    ("http://localhost:11434",      "openai-responses"),
+        "openai":              ("https://api.openai.com/v1",                "openai-completions"),
+        "anthropic":           ("https://api.anthropic.com",                "anthropic-messages"),
+        "xai":                 ("https://api.x.ai/v1",                     "openai-completions"),
+        "google":              ("https://generativelanguage.googleapis.com", "google-genai"),
+        "mistral":             ("https://api.mistral.ai/v1",               "openai-completions"),
+        "groq":                ("https://api.groq.com/openai/v1",          "openai-completions"),
+        "openrouter":          ("https://openrouter.ai/api/v1",            "openai-completions"),
+        "cerebras":            ("https://api.cerebras.ai/v1",              "openai-completions"),
+        "kimi-coding":         ("https://api.moonshot.ai/v1",              "openai-completions"),
+        "minimax":             ("https://api.minimax.chat/v1",             "openai-completions"),
+        "zai":                 ("https://api.z.ai/v1",                     "openai-completions"),
+        "opencode":            ("https://api.opencode.ai/v1",             "openai-completions"),
+        "vercel-ai-gateway":   ("https://sdk.vercel.ai/v1",               "openai-completions"),
+        "huggingface":         ("https://api-inference.huggingface.co",    "openai-completions"),
+        "ollama":              ("http://localhost:11434",                   "openai-responses"),
+        "lmstudio":            ("http://localhost:1234/v1",                "openai-completions"),
     ]
 
     /// Map ClawAPI scopes to the default model.
@@ -330,9 +354,19 @@ public enum OpenClawConfig {
         "anthropic": "anthropic/claude-sonnet-4-5",
         "claude": "anthropic/claude-sonnet-4-5",
         "xai": "xai/grok-4-fast",
+        "google-ai": "google/gemini-2.5-pro",
         "groq": "groq/meta-llama/llama-4-scout-17b-16e-instruct",
         "mistral": "mistral/mistral-large-latest",
+        "openrouter": "openrouter/auto",
+        "cerebras": "cerebras/llama-4-scout-17b-16e-instruct",
+        "kimi-coding": "kimi-coding/moonshot-v1-auto",
+        "minimax": "minimax/MiniMax-M1",
+        "zai": "zai/glm-4-flash",
+        "opencode": "opencode/opencode-latest",
+        "vercel-ai-gateway": "vercel-ai-gateway/auto",
+        "huggingface": "huggingface/meta-llama/Llama-3.3-70B-Instruct",
         "ollama": "ollama/llama3.2:3b",
+        "lmstudio": "lmstudio/default",
     ]
 
     /// Whether a scope requires an API key.
@@ -414,7 +448,9 @@ public enum OpenClawConfig {
         // without touching the Keychain
         syncKeylessProfiles(policies: enabled)
 
-        syncProviderDefinitions(enabledScopes: enabledScopes)
+        // Create provider entries for providers not already in openclaw.json
+        // (e.g. MiniMax, Groq — providers that aren't OpenClaw built-ins).
+        syncProviderDefinitions(enabledScopes: enabledScopes, createIfMissing: true)
 
         do {
             try setPrimaryModelAndFallbacks(topModel, fallbacks: fallbackModels,
@@ -523,7 +559,9 @@ public enum OpenClawConfig {
             return
         }
 
-        syncProviderDefinitions(enabledScopes: enabledScopes)
+        // Create provider entries for providers not already in openclaw.json
+        // (e.g. MiniMax, Groq — providers that aren't OpenClaw built-ins).
+        syncProviderDefinitions(enabledScopes: enabledScopes, createIfMissing: true)
 
         if let topModel = orderedModels.first {
             let fallbackModels = Array(orderedModels.dropFirst())
@@ -668,7 +706,7 @@ public enum OpenClawConfig {
     // MARK: - Provider Definitions Sync
 
     /// Ensure openclaw.json has correct baseUrl entries for enabled providers.
-    private static func syncProviderDefinitions(enabledScopes: Set<String>) {
+    private static func syncProviderDefinitions(enabledScopes: Set<String>, createIfMissing: Bool = false) {
         guard let data = try? readConfig(),
               var json = try? JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [String: Any] else {
             return
@@ -682,22 +720,33 @@ public enum OpenClawConfig {
             guard let providerName = providerForScope(scope),
                   let config = providerConfig[providerName] else { continue }
 
-            var entry = providers[providerName] as? [String: Any] ?? [:]
-            let currentBase = entry["baseUrl"] as? String
-            let currentApi = entry["api"] as? String
+            if var entry = providers[providerName] as? [String: Any] {
+                // Update existing provider if baseUrl/api needs fixing
+                let currentBase = entry["baseUrl"] as? String
+                let currentApi = entry["api"] as? String
 
-            let needsFix = currentBase == nil
-                || currentBase != config.baseUrl
-                || currentApi != config.api
-                || currentBase?.contains("127.0.0.1") == true
-                || currentBase?.contains("localhost") == true
+                let needsFix = currentBase != config.baseUrl
+                    || currentApi != config.api
+                    || currentBase?.contains("127.0.0.1") == true
+                    || currentBase?.contains("localhost") == true
 
-            if needsFix {
-                entry["baseUrl"] = config.baseUrl
-                entry["api"] = config.api
-                providers[providerName] = entry
+                if needsFix {
+                    entry["baseUrl"] = config.baseUrl
+                    entry["api"] = config.api
+                    providers[providerName] = entry
+                    changed = true
+                    logger.info("Fixed OpenClaw provider \(providerName) → \(config.baseUrl) (\(config.api))")
+                }
+            } else if createIfMissing {
+                // Create a new provider entry with an empty (but valid) models array.
+                // Only used by Clean Slate where we know the provider must exist.
+                providers[providerName] = [
+                    "baseUrl": config.baseUrl,
+                    "api": config.api,
+                    "models": [] as [Any],
+                ] as [String: Any]
                 changed = true
-                logger.info("Fixed OpenClaw provider \(providerName) → \(config.baseUrl) (\(config.api))")
+                logger.info("Created OpenClaw provider \(providerName) → \(config.baseUrl) (\(config.api))")
             }
         }
 
@@ -714,18 +763,181 @@ public enum OpenClawConfig {
         }
     }
 
+    // MARK: - Clean Slate
+
+    /// Directory where Clean Slate backups are stored.
+    private static var backupDirectory: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".openclaw")
+            .appendingPathComponent("clawapi-backups")
+    }
+
+    /// Perform a Clean Slate: back up current OpenClaw config files, then
+    /// rewrite them so only the single chosen model and its auth profile remain.
+    /// All fallbacks and other provider auth profiles are removed.
+    /// Returns the backup folder name on success.
+    public static func cleanSlate(policies: [ScopePolicy], keychain: KeychainService) throws -> String {
+        guard isInstalled else { throw ConfigError.notInstalled }
+
+        // Determine the primary provider (top-priority enabled + auto)
+        let enabled = policies
+            .filter { $0.isEnabled && ($0.hasSecret || !requiresKey(scope: $0.scope)) && $0.approvalMode == .auto }
+            .sorted { $0.priority < $1.priority }
+
+        guard let topPolicy = enabled.first,
+              let topModel = resolvedModel(for: topPolicy) else {
+            throw ConfigError.cleanSlateNoProvider
+        }
+
+        // --- 1. Create timestamped backup ---
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd_HHmmss"
+        let backupName = "backup-\(fmt.string(from: Date()))"
+        let backupDir = backupDirectory.appendingPathComponent(backupName)
+        try FileManager.default.createDirectory(at: backupDir, withIntermediateDirectories: true)
+
+        if connectionSettings.mode == .remote {
+            // Back up remote files locally
+            if let configData = try? readConfig() {
+                try configData.write(to: backupDir.appendingPathComponent("openclaw.json"))
+            }
+            if let authData = readAuthProfiles() {
+                try authData.write(to: backupDir.appendingPathComponent("auth-profiles.json"))
+            }
+        } else {
+            // Copy local files
+            let fm = FileManager.default
+            if fm.fileExists(atPath: configURL.path) {
+                try fm.copyItem(at: configURL, to: backupDir.appendingPathComponent("openclaw.json"))
+            }
+            if fm.fileExists(atPath: authProfilesURL.path) {
+                try fm.copyItem(at: authProfilesURL, to: backupDir.appendingPathComponent("auth-profiles.json"))
+            }
+        }
+
+        logger.info("Clean Slate backup saved to \(backupName)")
+
+        // --- 2. Rewrite openclaw.json with no fallbacks ---
+        do {
+            try setPrimaryModelAndFallbacks(topModel, fallbacks: [], managedPrefixes: [])
+        } catch {
+            throw ConfigError.cleanSlateFailed("Failed to set model: \(error.localizedDescription)")
+        }
+
+        // --- 3. Rewrite auth-profiles.json with only the active provider ---
+        guard let topProvider = providerForScope(topPolicy.scope) else {
+            throw ConfigError.cleanSlateFailed("Unknown provider for scope \(topPolicy.scope)")
+        }
+
+        let profileKey = "\(topProvider):default"
+        var profile: [String: Any]
+
+        if requiresKey(scope: topPolicy.scope) {
+            guard let key = try? keychain.retrieveString(forScope: topPolicy.scope) else {
+                throw ConfigError.cleanSlateFailed("Could not read API key from Keychain for \(topPolicy.scope)")
+            }
+            profile = [
+                "type": "api_key",
+                "provider": topProvider,
+                "key": key,
+            ]
+        } else {
+            profile = [
+                "type": "none",
+                "provider": topProvider,
+            ]
+        }
+
+        let authDoc: [String: Any] = [
+            "version": 1,
+            "profiles": [profileKey: profile],
+            "lastGood": [topProvider: profileKey],
+            "usageStats": [profileKey: ["lastUsed": 0, "errorCount": 0]],
+        ]
+
+        let authData = try JSONSerialization.data(withJSONObject: authDoc, options: [.prettyPrinted, .sortedKeys])
+        try writeAuthProfiles(authData)
+
+        // --- 4. Sync provider definitions for just this one provider ---
+        // createIfMissing: true because the chosen provider may not already exist
+        // in openclaw.json (e.g. MiniMax, Groq, etc. are not built-in providers).
+        syncProviderDefinitions(enabledScopes: Set([topPolicy.scope]), createIfMissing: true)
+
+        logger.info("Clean Slate complete: only \(topModel) via \(topProvider) remains")
+        return backupName
+    }
+
+    /// List available Clean Slate backups, newest first.
+    public static func listBackups() -> [(name: String, date: Date)] {
+        let fm = FileManager.default
+        let dir = backupDirectory
+        guard let contents = try? fm.contentsOfDirectory(atPath: dir.path) else { return [] }
+
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd_HHmmss"
+
+        var results: [(name: String, date: Date)] = []
+        for name in contents where name.hasPrefix("backup-") {
+            let dateStr = String(name.dropFirst("backup-".count))
+            if let date = fmt.date(from: dateStr) {
+                results.append((name, date))
+            }
+        }
+        return results.sorted { $0.date > $1.date }
+    }
+
+    /// Restore OpenClaw config files from a Clean Slate backup.
+    public static func restoreBackup(name: String) throws {
+        guard isInstalled else { throw ConfigError.notInstalled }
+
+        let backupDir = backupDirectory.appendingPathComponent(name)
+        let fm = FileManager.default
+
+        guard fm.fileExists(atPath: backupDir.path) else {
+            throw ConfigError.cleanSlateFailed("Backup \(name) not found")
+        }
+
+        let configBackup = backupDir.appendingPathComponent("openclaw.json")
+        let authBackup = backupDir.appendingPathComponent("auth-profiles.json")
+
+        if fm.fileExists(atPath: configBackup.path) {
+            let data = try Data(contentsOf: configBackup)
+            try writeConfig(data)
+            logger.info("Restored openclaw.json from \(name)")
+        }
+
+        if fm.fileExists(atPath: authBackup.path) {
+            let data = try Data(contentsOf: authBackup)
+            try writeAuthProfiles(data)
+            logger.info("Restored auth-profiles.json from \(name)")
+        }
+
+        logger.info("Backup \(name) restored successfully")
+    }
+
+    /// Delete a Clean Slate backup.
+    public static func deleteBackup(name: String) {
+        let backupDir = backupDirectory.appendingPathComponent(name)
+        try? FileManager.default.removeItem(at: backupDir)
+        logger.info("Deleted backup \(name)")
+    }
+
     // MARK: - Errors
 
     public enum ConfigError: LocalizedError {
         case notInstalled
         case readFailed
         case parseFailed
+        case cleanSlateNoProvider
+        case cleanSlateFailed(String)
 
         public var errorDescription: String? {
             switch self {
             case .notInstalled: "OpenClaw config not found at ~/.openclaw/openclaw.json"
             case .readFailed: "Failed to read OpenClaw config file"
             case .parseFailed: "Failed to parse OpenClaw config as JSON"
+            case .cleanSlateNoProvider: "No enabled provider to keep — enable at least one provider first"
+            case .cleanSlateFailed(let detail): "Clean Slate failed: \(detail)"
             }
         }
     }

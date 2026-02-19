@@ -4,9 +4,17 @@ import Shared
 struct ModelSelectorView: View {
     @EnvironmentObject var store: PolicyStore
     @State private var gatewayStatus: GatewayRestartStatus = .idle
+    @State private var cleanSlateStatus: CleanSlateStatus = .idle
+    @State private var showCleanSlateConfirm = false
+    @State private var showRestoreSheet = false
+    @State private var cleanSlateError: String?
 
     private enum GatewayRestartStatus: Equatable {
         case idle, restarting, success, failed
+    }
+
+    private enum CleanSlateStatus: Equatable {
+        case idle, working, success(String), failed
     }
 
     private var enabledProviders: [ScopePolicy] {
@@ -147,6 +155,81 @@ struct ModelSelectorView: View {
                     Text("Sends a reload signal to the OpenClaw gateway. Use this if the gateway needs to pick up config changes.")
                 }
 
+                // Clean Slate
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "eraser.line.dashed.fill")
+                            .font(.title3)
+                            .foregroundStyle(cleanSlateIconColor)
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Clean Slate")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Text(cleanSlateStatusText)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Button {
+                            showRestoreSheet = true
+                        } label: {
+                            Text("Restore")
+                                .frame(width: 64)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(!OpenClawConfig.isInstalled || OpenClawConfig.listBackups().isEmpty)
+
+                        Button {
+                            showCleanSlateConfirm = true
+                        } label: {
+                            if case .working = cleanSlateStatus {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .frame(width: 80)
+                            } else {
+                                Text("Clean Slate")
+                                    .frame(width: 80)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
+                        .controlSize(.small)
+                        .disabled(!OpenClawConfig.isInstalled || enabledProviders.isEmpty || cleanSlateStatus == .working)
+                    }
+
+                    if let error = cleanSlateError {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red)
+                                .font(.caption)
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                } footer: {
+                    Text("Removes all fallback models and extra provider credentials from OpenClaw. Only the #1 primary model and its API key remain. Creates a backup you can restore.")
+                }
+                .alert("Clean Slate", isPresented: $showCleanSlateConfirm) {
+                    Button("Clean Slate", role: .destructive) {
+                        performCleanSlate()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    if let top = enabledProviders.first {
+                        let model = top.selectedModel ?? top.scope
+                        Text("This will remove all fallback models and other provider credentials from OpenClaw.\n\nOnly \(top.serviceName) (\(model)) will remain.\n\nA backup is created automatically so you can restore later.")
+                    }
+                }
+                .sheet(isPresented: $showRestoreSheet) {
+                    RestoreBackupSheet()
+                }
+
                 // Synced providers
                 Section {
                     if enabledProviders.isEmpty {
@@ -204,6 +287,71 @@ struct ModelSelectorView: View {
         case .restarting: "Sending reload signal..."
         case .success: "Gateway reloaded successfully"
         case .failed: "Gateway reload failed — is OpenClaw running?"
+        }
+    }
+
+    // MARK: - Clean Slate helpers
+
+    private var cleanSlateIconColor: Color {
+        switch cleanSlateStatus {
+        case .idle: .orange
+        case .working: .orange
+        case .success: .green
+        case .failed: .red
+        }
+    }
+
+    private var cleanSlateStatusText: String {
+        switch cleanSlateStatus {
+        case .idle: "Remove all fallbacks — use only one provider"
+        case .working: "Creating backup and cleaning config..."
+        case .success(let backup): "Done — backup saved as \(backup)"
+        case .failed: "Clean Slate failed"
+        }
+    }
+
+    private func performCleanSlate() {
+        cleanSlateStatus = .working
+        cleanSlateError = nil
+        Task {
+            do {
+                guard await KeychainService.authenticateWithBiometrics(
+                    reason: "Authenticate to perform Clean Slate"
+                ) else {
+                    await MainActor.run {
+                        cleanSlateStatus = .idle
+                    }
+                    return
+                }
+                store.keychain.preloadAll()
+                let backupName = try OpenClawConfig.cleanSlate(
+                    policies: store.policies,
+                    keychain: store.keychain
+                )
+                await MainActor.run {
+                    cleanSlateStatus = .success(backupName)
+                    cleanSlateError = nil
+                }
+                // Reset status after 5 seconds
+                try? await Task.sleep(for: .seconds(5))
+                await MainActor.run {
+                    if case .success = cleanSlateStatus {
+                        cleanSlateStatus = .idle
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    cleanSlateStatus = .failed
+                    cleanSlateError = error.localizedDescription
+                }
+                try? await Task.sleep(for: .seconds(10))
+                await MainActor.run {
+                    if cleanSlateStatus == .failed {
+                        cleanSlateStatus = .idle
+                        cleanSlateError = nil
+                    }
+                }
+            }
         }
     }
 }
@@ -275,6 +423,131 @@ private struct InfoRow: View {
                 .frame(width: 20)
             Text(text)
                 .font(.subheadline)
+        }
+    }
+}
+
+// MARK: - Restore Backup Sheet
+
+private struct RestoreBackupSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var backups: [(name: String, date: Date)] = []
+    @State private var restoreError: String?
+    @State private var showDeleteConfirm = false
+    @State private var backupToDelete: String?
+
+    private let dateFmt: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Restore Backup")
+                    .font(.headline)
+                Spacer()
+                Button("Done") { dismiss() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+            .padding()
+
+            Divider()
+
+            if backups.isEmpty {
+                VStack(spacing: 12) {
+                    Spacer()
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.secondary)
+                    Text("No backups available")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Text("Backups are created automatically when you use Clean Slate.")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .padding()
+            } else {
+                List {
+                    ForEach(backups, id: \.name) { backup in
+                        HStack(spacing: 12) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .foregroundStyle(.blue)
+                                .frame(width: 20)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(dateFmt.string(from: backup.date))
+                                    .font(.subheadline)
+                                Text(backup.name)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fontDesign(.monospaced)
+                            }
+
+                            Spacer()
+
+                            Button(role: .destructive) {
+                                backupToDelete = backup.name
+                                showDeleteConfirm = true
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.borderless)
+
+                            Button("Restore") {
+                                restoreBackup(backup.name)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+                .listStyle(.inset(alternatesRowBackgrounds: true))
+            }
+
+            if let error = restoreError {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+            }
+        }
+        .frame(width: 480, height: 320)
+        .onAppear { backups = OpenClawConfig.listBackups() }
+        .alert("Delete Backup", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let name = backupToDelete {
+                    OpenClawConfig.deleteBackup(name: name)
+                    backups = OpenClawConfig.listBackups()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Delete this backup permanently?")
+        }
+    }
+
+    private func restoreBackup(_ name: String) {
+        restoreError = nil
+        do {
+            try OpenClawConfig.restoreBackup(name: name)
+            dismiss()
+        } catch {
+            restoreError = error.localizedDescription
         }
     }
 }
