@@ -4,5 +4,5 @@
   "minimumSystemVersion": "14.0",
   "releaseNotes": "Hotfix\n• Fix Keychain save error (-34018) when adding or updating API keys\n• Revert to compatible Keychain access control for Developer ID signed apps",
   "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.7.1/ClawAPI.zip",
-  "sha256": "f13b0a164543a0ec4ee054652e87244bc2110f2f20cc27e838bee2bc6856b900"
+  "sha256": "25344f0342c7ffe19935924ed2a44b02e3c135f8331dd3b23655893746c6d4fc"
 }
