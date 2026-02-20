@@ -42,6 +42,7 @@ struct AddScopeSheet: View {
     private enum AddStep {
         case pickService
         case enterKey
+        case oauthFlow
         case success
     }
 
@@ -52,7 +53,11 @@ struct AddScopeSheet: View {
                 ServicePickerView(
                     onSelect: { template in
                         selectTemplate(template)
-                        withAnimation(.easeInOut(duration: 0.25)) { step = .enterKey }
+                        if case .oauth = template.authMethod {
+                            withAnimation(.easeInOut(duration: 0.25)) { step = .oauthFlow }
+                        } else {
+                            withAnimation(.easeInOut(duration: 0.25)) { step = .enterKey }
+                        }
                     },
                     onSelectCustom: {
                         selectCustom()
@@ -91,13 +96,35 @@ struct AddScopeSheet: View {
                     removal: .move(edge: .trailing)
                 ))
 
+            case .oauthFlow:
+                if let template = selectedTemplate {
+                    OAuthFlowView(
+                        template: template,
+                        onComplete: { policy in
+                            store.addPolicy(policy)
+                            addedServiceName = policy.serviceName
+                            withAnimation { step = .success }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                dismiss()
+                            }
+                        },
+                        onCancel: {
+                            withAnimation(.easeInOut(duration: 0.25)) { step = .pickService }
+                        }
+                    )
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing),
+                        removal: .move(edge: .trailing)
+                    ))
+                }
+
             case .success:
                 SuccessView(serviceName: addedServiceName, isFirstProvider: isFirstProvider,
                             isLocal: !(selectedTemplate?.requiresKey ?? true))
                     .transition(.opacity)
             }
         }
-        .frame(width: 520, height: step == .success ? (isFirstProvider ? 340 : 260) : 620)
+        .frame(width: 520, height: step == .success ? (isFirstProvider ? 340 : 260) : (step == .oauthFlow ? 460 : 620))
         .animation(.easeInOut(duration: 0.25), value: step == .success)
         .alert("Keychain Access", isPresented: $showKeychainWarning) {
             Button("Continue") {
@@ -130,7 +157,11 @@ struct AddScopeSheet: View {
         .onAppear {
             if let template = initialTemplate {
                 selectTemplate(template)
-                step = .enterKey
+                if case .oauth = template.authMethod {
+                    step = .oauthFlow
+                } else {
+                    step = .enterKey
+                }
             }
         }
     }

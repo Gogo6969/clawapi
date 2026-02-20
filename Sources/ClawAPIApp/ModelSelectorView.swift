@@ -8,6 +8,11 @@ struct ModelSelectorView: View {
     @State private var showCleanSlateConfirm = false
     @State private var showRestoreSheet = false
     @State private var cleanSlateError: String?
+    @State private var oauthProfiles: [OpenClawConfig.OAuthProfile] = []
+    @State private var showRemoveOAuthConfirm = false
+    @State private var oauthToRemove: OpenClawConfig.OAuthProfile?
+    @State private var oauthRemoveError: String?
+    @State private var showOAuthBackups = false
 
     private enum GatewayRestartStatus: Equatable {
         case idle, restarting, success, failed
@@ -230,6 +235,91 @@ struct ModelSelectorView: View {
                     RestoreBackupSheet()
                 }
 
+                // OAuth Connections
+                if !oauthProfiles.isEmpty {
+                    Section {
+                        ForEach(oauthProfiles, id: \.profileKey) { profile in
+                            HStack(spacing: 12) {
+                                Image(systemName: "person.badge.key.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.blue)
+                                    .frame(width: 24)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(profile.provider)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    HStack(spacing: 4) {
+                                        Text("OAuth")
+                                            .font(.caption2)
+                                            .padding(.horizontal, 5)
+                                            .padding(.vertical, 1)
+                                            .background(.blue.opacity(0.15), in: Capsule())
+                                            .foregroundStyle(.blue)
+                                        if let acct = profile.accountId {
+                                            Text(acct.prefix(8) + "...")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .fontDesign(.monospaced)
+                                        }
+                                    }
+                                }
+
+                                Spacer()
+
+                                Button(role: .destructive) {
+                                    oauthToRemove = profile
+                                    showRemoveOAuthConfirm = true
+                                } label: {
+                                    Text("Remove")
+                                        .frame(width: 64)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                        }
+
+                        if let error = oauthRemoveError {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.red)
+                                    .font(.caption)
+                                Text(error)
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                    } header: {
+                        HStack {
+                            Text("OAuth Connections")
+                            Spacer()
+                            Button("Backups") {
+                                showOAuthBackups = true
+                            }
+                            .font(.caption)
+                            .buttonStyle(.borderless)
+                            .disabled(OpenClawConfig.listOAuthBackups().isEmpty)
+                        }
+                    } footer: {
+                        Text("OAuth connections are managed by OpenClaw. They use your ChatGPT/account login instead of an API key. Removing an OAuth connection creates a backup so you can restore it later.")
+                    }
+                    .alert("Remove OAuth Connection", isPresented: $showRemoveOAuthConfirm) {
+                        Button("Remove", role: .destructive) {
+                            if let profile = oauthToRemove {
+                                removeOAuthProfile(profile)
+                            }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        if let profile = oauthToRemove {
+                            Text("Remove the OAuth connection for \(profile.provider)?\n\nA backup will be created automatically. You can restore it from the OAuth Backups sheet, or re-authenticate by adding the provider again in the Providers tab.")
+                        }
+                    }
+                    .sheet(isPresented: $showOAuthBackups) {
+                        OAuthBackupSheet()
+                    }
+                }
+
                 // Synced providers
                 Section {
                     if enabledProviders.isEmpty {
@@ -269,6 +359,19 @@ struct ModelSelectorView: View {
                 }
             }
             .listStyle(.inset(alternatesRowBackgrounds: true))
+            .onAppear { oauthProfiles = OpenClawConfig.listOAuthProfiles() }
+        }
+    }
+
+    // MARK: - OAuth helpers
+
+    private func removeOAuthProfile(_ profile: OpenClawConfig.OAuthProfile) {
+        oauthRemoveError = nil
+        do {
+            _ = try OpenClawConfig.removeOAuthProfile(profileKey: profile.profileKey)
+            oauthProfiles = OpenClawConfig.listOAuthProfiles()
+        } catch {
+            oauthRemoveError = error.localizedDescription
         }
     }
 
@@ -542,6 +645,136 @@ private struct RestoreBackupSheet: View {
     }
 
     private func restoreBackup(_ name: String) {
+        restoreError = nil
+        do {
+            try OpenClawConfig.restoreBackup(name: name)
+            dismiss()
+        } catch {
+            restoreError = error.localizedDescription
+        }
+    }
+}
+
+// MARK: - OAuth Backup Sheet
+
+private struct OAuthBackupSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var backups: [(name: String, date: Date)] = []
+    @State private var restoreError: String?
+    @State private var showDeleteConfirm = false
+    @State private var backupToDelete: String?
+
+    private let dateFmt: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("OAuth Backups")
+                        .font(.headline)
+                    Text("Restore a previously removed OAuth connection")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Done") { dismiss() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+            .padding()
+
+            Divider()
+
+            if backups.isEmpty {
+                VStack(spacing: 12) {
+                    Spacer()
+                    Image(systemName: "person.badge.key")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.secondary)
+                    Text("No OAuth backups")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Text("Backups are created when you remove an OAuth connection.")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .padding()
+            } else {
+                List {
+                    ForEach(backups, id: \.name) { backup in
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.badge.key")
+                                .foregroundStyle(.blue)
+                                .frame(width: 20)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(dateFmt.string(from: backup.date))
+                                    .font(.subheadline)
+                                Text(backup.name)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fontDesign(.monospaced)
+                            }
+
+                            Spacer()
+
+                            Button(role: .destructive) {
+                                backupToDelete = backup.name
+                                showDeleteConfirm = true
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.borderless)
+
+                            Button("Restore") {
+                                restoreOAuthBackup(backup.name)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+                .listStyle(.inset(alternatesRowBackgrounds: true))
+            }
+
+            if let error = restoreError {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+            }
+        }
+        .frame(width: 480, height: 320)
+        .onAppear { backups = OpenClawConfig.listOAuthBackups() }
+        .alert("Delete Backup", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let name = backupToDelete {
+                    OpenClawConfig.deleteBackup(name: name)
+                    backups = OpenClawConfig.listOAuthBackups()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Delete this OAuth backup permanently? You won't be able to restore this OAuth connection from it.")
+        }
+    }
+
+    private func restoreOAuthBackup(_ name: String) {
         restoreError = nil
         do {
             try OpenClawConfig.restoreBackup(name: name)

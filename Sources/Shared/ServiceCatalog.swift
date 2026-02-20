@@ -1,5 +1,16 @@
 import Foundation
 
+/// How a provider authenticates: API key, OAuth flow, or no auth (local).
+public enum AuthMethod: Sendable {
+    /// Standard API key pasted by the user, stored in Keychain.
+    case apiKey
+    /// OAuth flow via `openclaw onboard --auth-choice <provider>`.
+    /// The associated value is the `--auth-choice` argument (e.g. "openai-codex").
+    case oauth(provider: String)
+    /// No authentication needed (local providers like Ollama).
+    case none
+}
+
 /// A known service with pre-filled configuration.
 /// Users just pick a service and paste their API key — everything else is automatic.
 public struct ServiceTemplate: Sendable, Identifiable {
@@ -11,8 +22,10 @@ public struct ServiceTemplate: Sendable, Identifiable {
     public let customHeaderName: String?
     public let suggestedTags: [String]
     public let keyPlaceholder: String
-    /// Whether the provider requires an API key. False for local providers like Ollama.
+    /// Whether the provider requires an API key. False for local and OAuth providers.
     public let requiresKey: Bool
+    /// How this provider authenticates.
+    public let authMethod: AuthMethod
 
     public init(
         name: String,
@@ -22,7 +35,8 @@ public struct ServiceTemplate: Sendable, Identifiable {
         customHeaderName: String?,
         suggestedTags: [String],
         keyPlaceholder: String,
-        requiresKey: Bool = true
+        requiresKey: Bool = true,
+        authMethod: AuthMethod = .apiKey
     ) {
         self.name = name
         self.scope = scope
@@ -32,6 +46,7 @@ public struct ServiceTemplate: Sendable, Identifiable {
         self.suggestedTags = suggestedTags
         self.keyPlaceholder = keyPlaceholder
         self.requiresKey = requiresKey
+        self.authMethod = authMethod
     }
 }
 
@@ -170,6 +185,19 @@ public enum ServiceCatalog {
             keyPlaceholder: "hf_..."
         ),
 
+        // ── OAuth Providers ──
+        ServiceTemplate(
+            name: "OpenAI Codex (OAuth)",
+            scope: "openai-codex",
+            domains: ["api.openai.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding"],
+            keyPlaceholder: "",
+            requiresKey: false,
+            authMethod: .oauth(provider: "openai-codex")
+        ),
+
         // ── Local Providers ──
         ServiceTemplate(
             name: "Ollama",
@@ -179,7 +207,8 @@ public enum ServiceCatalog {
             customHeaderName: nil,
             suggestedTags: ["coding", "chat"],
             keyPlaceholder: "",
-            requiresKey: false
+            requiresKey: false,
+            authMethod: .none
         ),
         ServiceTemplate(
             name: "LM Studio",
@@ -189,7 +218,8 @@ public enum ServiceCatalog {
             customHeaderName: nil,
             suggestedTags: ["coding", "chat"],
             keyPlaceholder: "",
-            requiresKey: false
+            requiresKey: false,
+            authMethod: .none
         ),
     ]
 
@@ -220,6 +250,7 @@ public enum ServiceCatalog {
         "vercel-ai-gateway": "vercel-ai-gateway",
         "ollama": "ollama",
         "lmstudio": "lmstudio",
+        "openai-codex": "openai-codex",
         "claude": "anthropic",  // Legacy alias — some policies use "claude" instead of "anthropic"
     ]
 

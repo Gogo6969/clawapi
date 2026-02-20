@@ -318,6 +318,7 @@ public enum OpenClawConfig {
         "vercel-ai-gateway": "vercel-ai-gateway",
         "ollama": "ollama",
         "lmstudio": "lmstudio",
+        "openai-codex": "openai-codex",
     ]
 
     /// Look up the OpenClaw provider for a scope, matching on the base name
@@ -346,6 +347,7 @@ public enum OpenClawConfig {
         "huggingface":         ("https://api-inference.huggingface.co",    "openai-completions"),
         "ollama":              ("http://localhost:11434",                   "openai-responses"),
         "lmstudio":            ("http://localhost:1234/v1",                "openai-completions"),
+        "openai-codex":        ("https://api.openai.com/v1",              "openai-completions"),
     ]
 
     /// Map ClawAPI scopes to the default model.
@@ -367,6 +369,7 @@ public enum OpenClawConfig {
         "huggingface": "huggingface/meta-llama/Llama-3.3-70B-Instruct",
         "ollama": "ollama/llama3.2:3b",
         "lmstudio": "lmstudio/default",
+        "openai-codex": "openai-codex/gpt-5.3-codex",
     ]
 
     /// Whether a scope requires an API key.
@@ -426,6 +429,8 @@ public enum OpenClawConfig {
     /// Lightweight sync that only updates the primary model and provider
     /// definitions in openclaw.json — does NOT touch the keychain or
     /// auth-profiles.json (except for keyless providers like Ollama).
+    /// Respects externally-set models (e.g. openai-codex set via OpenClaw CLI)
+    /// by only overriding the model when it belongs to a provider ClawAPI manages.
     public static func syncModelOnly(policies: [ScopePolicy]) {
         guard isInstalled else { return }
 
@@ -451,6 +456,18 @@ public enum OpenClawConfig {
         // Create provider entries for providers not already in openclaw.json
         // (e.g. MiniMax, Groq — providers that aren't OpenClaw built-ins).
         syncProviderDefinitions(enabledScopes: enabledScopes, createIfMissing: true)
+
+        // Only update the model if the current model is from a provider we manage.
+        // If the user set a model via OpenClaw CLI (e.g. openai-codex/gpt-5.3-codex),
+        // don't override it — respect external changes.
+        let managedProviders = Set(enabledScopes.compactMap { providerForScope($0) })
+        if let current = currentModel(), !current.isEmpty {
+            let currentProvider = current.split(separator: "/").first.map(String.init) ?? ""
+            if !managedProviders.contains(currentProvider) {
+                logger.info("Current model \(current) is from unmanaged provider \(currentProvider), not overriding")
+                return
+            }
+        }
 
         do {
             try setPrimaryModelAndFallbacks(topModel, fallbacks: fallbackModels,
@@ -500,6 +517,13 @@ public enum OpenClawConfig {
 
             let profileKey = "\(provider):default"
 
+            // Never overwrite OAuth profiles — they're managed by OpenClaw's onboard flow
+            if let existing = profiles[profileKey] as? [String: Any],
+               existing["type"] as? String == "oauth" {
+                logger.info("Preserving OAuth profile for \(provider)")
+                continue
+            }
+
             if requiresKey(scope: policy.scope) {
                 guard let key = try? keychain.retrieveString(forScope: policy.scope) else { continue }
                 profiles[profileKey] = [
@@ -548,10 +572,17 @@ public enum OpenClawConfig {
 
         // Remove stale profiles that don't map to any known provider
         // (e.g. "clawapi:default" — not a real AI provider, confuses OpenClaw failover).
+        // Never remove OAuth profiles — they're managed by OpenClaw's onboard flow.
         let knownProviders = Set(scopeToProvider.values)
         for key in Array(profiles.keys) {
             let provider = key.replacingOccurrences(of: ":default", with: "")
             if !knownProviders.contains(provider) && !enabledProviders.contains(provider) {
+                // Preserve OAuth profiles even if the provider is unknown to ClawAPI
+                if let prof = profiles[key] as? [String: Any],
+                   prof["type"] as? String == "oauth" {
+                    logger.info("Preserving unknown OAuth profile \(key)")
+                    continue
+                }
                 profiles.removeValue(forKey: key)
                 lastGood.removeValue(forKey: provider)
                 usageStats.removeValue(forKey: key)
@@ -577,13 +608,29 @@ public enum OpenClawConfig {
         // (e.g. MiniMax, Groq — providers that aren't OpenClaw built-ins).
         syncProviderDefinitions(enabledScopes: enabledScopes, createIfMissing: true)
 
+        // Only update the model if the current model is from a provider we manage.
+        // If the user set a model via OpenClaw CLI (e.g. openai-codex/gpt-5.3-codex),
+        // don't override it — respect external changes.
         if let topModel = orderedModels.first {
-            let fallbackModels = Array(orderedModels.dropFirst())
-            do {
-                try setPrimaryModelAndFallbacks(topModel, fallbacks: fallbackModels,
-                                                managedPrefixes: managedProviderPrefixes(from: enabledScopes))
-            } catch {
-                postSyncError("Failed to set primary model: \(error.localizedDescription)")
+            let managedProviders = Set(enabledScopes.compactMap { providerForScope($0) })
+            var shouldUpdateModel = true
+
+            if let current = currentModel(), !current.isEmpty {
+                let currentProvider = current.split(separator: "/").first.map(String.init) ?? ""
+                if !managedProviders.contains(currentProvider) {
+                    logger.info("Current model \(current) is from unmanaged provider, not overriding")
+                    shouldUpdateModel = false
+                }
+            }
+
+            if shouldUpdateModel {
+                let fallbackModels = Array(orderedModels.dropFirst())
+                do {
+                    try setPrimaryModelAndFallbacks(topModel, fallbacks: fallbackModels,
+                                                    managedPrefixes: managedProviderPrefixes(from: enabledScopes))
+                } catch {
+                    postSyncError("Failed to set primary model: \(error.localizedDescription)")
+                }
             }
         }
 
@@ -862,11 +909,33 @@ public enum OpenClawConfig {
             ]
         }
 
+        var newProfiles: [String: Any] = [profileKey: profile]
+        var newLastGood: [String: Any] = [topProvider: profileKey]
+        var newUsageStats: [String: Any] = [profileKey: ["lastUsed": 0, "errorCount": 0] as [String: Any]]
+
+        // Preserve OAuth profiles through Clean Slate — they're managed by
+        // OpenClaw's onboard flow and cannot be recreated without user interaction.
+        if let currentAuthData = readAuthProfiles(),
+           let currentAuth = try? JSONSerialization.jsonObject(with: currentAuthData) as? [String: Any],
+           let currentProfiles = currentAuth["profiles"] as? [String: Any] {
+            let currentLastGood = currentAuth["lastGood"] as? [String: Any] ?? [:]
+            let currentUsageStats = currentAuth["usageStats"] as? [String: Any] ?? [:]
+            for (key, value) in currentProfiles {
+                if let prof = value as? [String: Any], prof["type"] as? String == "oauth" {
+                    newProfiles[key] = value
+                    let oauthProvider = prof["provider"] as? String ?? key.replacingOccurrences(of: ":default", with: "")
+                    if let lg = currentLastGood[oauthProvider] { newLastGood[oauthProvider] = lg }
+                    if let us = currentUsageStats[key] { newUsageStats[key] = us }
+                    logger.info("Preserved OAuth profile \(key) through Clean Slate")
+                }
+            }
+        }
+
         let authDoc: [String: Any] = [
             "version": 1,
-            "profiles": [profileKey: profile],
-            "lastGood": [topProvider: profileKey],
-            "usageStats": [profileKey: ["lastUsed": 0, "errorCount": 0]],
+            "profiles": newProfiles,
+            "lastGood": newLastGood,
+            "usageStats": newUsageStats,
         ]
 
         let authData = try JSONSerialization.data(withJSONObject: authDoc, options: [.prettyPrinted, .sortedKeys])
@@ -934,6 +1003,109 @@ public enum OpenClawConfig {
         let backupDir = backupDirectory.appendingPathComponent(name)
         try? FileManager.default.removeItem(at: backupDir)
         logger.info("Deleted backup \(name)")
+    }
+
+    // MARK: - OAuth Profile Management
+
+    /// Describes an OAuth profile found in auth-profiles.json.
+    public struct OAuthProfile: Sendable {
+        public let profileKey: String   // e.g. "openai-codex:default"
+        public let provider: String     // e.g. "openai-codex"
+        public let accountId: String?
+    }
+
+    /// List all OAuth profiles currently in auth-profiles.json.
+    public static func listOAuthProfiles() -> [OAuthProfile] {
+        guard let data = readAuthProfiles(),
+              let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let profiles = parsed["profiles"] as? [String: Any] else {
+            return []
+        }
+        var result: [OAuthProfile] = []
+        for (key, value) in profiles {
+            guard let prof = value as? [String: Any],
+                  prof["type"] as? String == "oauth" else { continue }
+            let provider = prof["provider"] as? String ?? key.replacingOccurrences(of: ":default", with: "")
+            let accountId = prof["accountId"] as? String
+            result.append(OAuthProfile(profileKey: key, provider: provider, accountId: accountId))
+        }
+        return result
+    }
+
+    /// Remove an OAuth profile from auth-profiles.json.
+    /// Creates a backup first so the profile can be restored.
+    /// Returns the backup name on success.
+    public static func removeOAuthProfile(profileKey: String) throws -> String {
+        guard isInstalled else { throw ConfigError.notInstalled }
+
+        // Create backup before removing
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd_HHmmss"
+        let backupName = "oauth-backup-\(fmt.string(from: Date()))"
+        let backupDir = backupDirectory.appendingPathComponent(backupName)
+        try FileManager.default.createDirectory(at: backupDir, withIntermediateDirectories: true)
+
+        if connectionSettings.mode == .remote {
+            if let authData = readAuthProfiles() {
+                try authData.write(to: backupDir.appendingPathComponent("auth-profiles.json"))
+            }
+        } else {
+            let fm = FileManager.default
+            if fm.fileExists(atPath: authProfilesURL.path) {
+                try fm.copyItem(at: authProfilesURL, to: backupDir.appendingPathComponent("auth-profiles.json"))
+            }
+        }
+
+        logger.info("OAuth profile backup saved to \(backupName)")
+
+        // Read, remove, write
+        guard let data = readAuthProfiles(),
+              var authDoc = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw ConfigError.readFailed
+        }
+
+        var profiles = authDoc["profiles"] as? [String: Any] ?? [:]
+        var lastGood = authDoc["lastGood"] as? [String: Any] ?? [:]
+        var usageStats = authDoc["usageStats"] as? [String: Any] ?? [:]
+
+        guard let prof = profiles[profileKey] as? [String: Any],
+              prof["type"] as? String == "oauth" else {
+            throw ConfigError.cleanSlateFailed("Profile \(profileKey) is not an OAuth profile")
+        }
+
+        let provider = prof["provider"] as? String ?? profileKey.replacingOccurrences(of: ":default", with: "")
+        profiles.removeValue(forKey: profileKey)
+        lastGood.removeValue(forKey: provider)
+        usageStats.removeValue(forKey: profileKey)
+
+        authDoc["profiles"] = profiles
+        authDoc["lastGood"] = lastGood
+        authDoc["usageStats"] = usageStats
+
+        let newData = try JSONSerialization.data(withJSONObject: authDoc, options: [.prettyPrinted, .sortedKeys])
+        try writeAuthProfiles(newData)
+
+        logger.info("Removed OAuth profile \(profileKey)")
+        return backupName
+    }
+
+    /// List OAuth-specific backups (created when removing OAuth profiles).
+    public static func listOAuthBackups() -> [(name: String, date: Date)] {
+        let fm = FileManager.default
+        let dir = backupDirectory
+        guard let contents = try? fm.contentsOfDirectory(atPath: dir.path) else { return [] }
+
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd_HHmmss"
+
+        var results: [(name: String, date: Date)] = []
+        for name in contents where name.hasPrefix("oauth-backup-") {
+            let dateStr = String(name.dropFirst("oauth-backup-".count))
+            if let date = fmt.date(from: dateStr) {
+                results.append((name, date))
+            }
+        }
+        return results.sorted { $0.date > $1.date }
     }
 
     // MARK: - Errors
