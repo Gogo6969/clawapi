@@ -101,7 +101,10 @@ struct AddScopeSheet: View {
                     OAuthFlowView(
                         template: template,
                         onComplete: { policy in
-                            store.addPolicy(policy)
+                            // Guard against duplicate — auto-adopt may have already created the policy
+                            if !store.policies.contains(where: { $0.scope == policy.scope }) {
+                                store.addPolicy(policy)
+                            }
                             addedServiceName = policy.serviceName
                             withAnimation { step = .success }
                             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {

@@ -1,8 +1,8 @@
 {
-  "version": "1.8.3",
+  "version": "1.8.4",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "OAuth Banner on Providers Tab\n• Clickable \"Cheapest Way to Code with AI\" banner on the Providers screen\n• Click to jump straight into OpenAI Codex (OAuth) setup\n• Banner auto-hides once openai-codex is configured, or dismiss with X",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.3/ClawAPI.zip",
-  "sha256": "be6f40e8885bf66543b2e6914703eb5deb4d9918df72faa47d6f86275ea8b2d7"
+  "releaseNotes": "Duplicate OAuth Policy Fix\n• Prevent duplicate provider entries when OAuth setup completes while auto-adopt already created the policy",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.4/ClawAPI.zip",
+  "sha256": "d0bf1b9c524810b18fc403b3158772f7f3b27cebc59df05cc53618c415126ec4"
 }
