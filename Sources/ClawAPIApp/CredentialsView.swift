@@ -13,6 +13,8 @@ struct CredentialsView: View {
     @State private var showModelSwitchTip = false
     @AppStorage("dismissedKeychainBanner") private var dismissedKeychainBanner = false
     @AppStorage("dismissedModelSwitchTip") private var dismissedModelSwitchTip = false
+    @AppStorage("dismissedOAuthBanner") private var dismissedOAuthBanner = false
+    @State private var showingOAuthSetup = false
 
     var filteredPolicies: [ScopePolicy] {
         if searchText.isEmpty {
@@ -125,6 +127,53 @@ struct CredentialsView: View {
                 .background(Color.red.opacity(0.08))
             }
 
+            // OAuth cost banner — shown when no OAuth provider is configured
+            if !dismissedOAuthBanner && !store.policies.contains(where: { $0.scope == "openai-codex" }) {
+                Button {
+                    showingOAuthSetup = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "dollarsign.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.green)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Cheapest Way to Code with AI")
+                                .font(.callout)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.primary)
+                            Text("Set up OpenAI Codex (OAuth) — uses ChatGPT Plus ($20/mo) instead of per-token API billing.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Text("Set Up")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.green.opacity(0.15), in: Capsule())
+                            .foregroundStyle(.green)
+
+                        Button {
+                            withAnimation { dismissedOAuthBanner = true }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Dismiss this banner")
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.green.opacity(0.06))
+                }
+                .buttonStyle(.plain)
+            }
+
             Divider()
 
             // Search bar
@@ -204,6 +253,9 @@ struct CredentialsView: View {
             ModelSwitchInfoSheet {
                 selectedTab = .model
             }
+        }
+        .sheet(isPresented: $showingOAuthSetup) {
+            AddScopeSheet(initialTemplate: ServiceCatalog.all.first { $0.scope == "openai-codex" })
         }
     }
 }

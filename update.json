@@ -1,8 +1,8 @@
 {
-  "version": "1.8.2",
+  "version": "1.8.3",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "OAuth Setup Fix & Cost Banner\n• Fix OAuth setup failing with \"Not authorized to send Apple events to Terminal\" (-1743)\n• Use .command script instead of AppleScript — no Automation permission needed\n• Add prominent cost banner: OpenAI Codex via OAuth is the cheapest way to code with AI",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.2/ClawAPI.zip",
-  "sha256": "7071177cc9206c521a12513eada0220a51cfad0f8ffd92ff7c41b9b66b781890"
+  "releaseNotes": "OAuth Banner on Providers Tab\n• Clickable \"Cheapest Way to Code with AI\" banner on the Providers screen\n• Click to jump straight into OpenAI Codex (OAuth) setup\n• Banner auto-hides once openai-codex is configured, or dismiss with X",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.3/ClawAPI.zip",
+  "sha256": "be6f40e8885bf66543b2e6914703eb5deb4d9918df72faa47d6f86275ea8b2d7"
 }
