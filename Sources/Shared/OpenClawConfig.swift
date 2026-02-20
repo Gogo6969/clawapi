@@ -1108,6 +1108,88 @@ public enum OpenClawConfig {
         return results.sorted { $0.date > $1.date }
     }
 
+    // MARK: - Auto-Adopt Orphaned OAuth Profiles
+
+    /// Result of auto-adopting orphaned OAuth profiles.
+    public struct OAuthAdoptionResult: Sendable {
+        /// Newly created policies for orphaned OAuth profiles.
+        public let policies: [ScopePolicy]
+        /// The scope of the adopted policy whose model is currently active in OpenClaw,
+        /// or nil if the active model doesn't belong to any adopted provider.
+        /// When non-nil, this policy should be inserted at priority #1.
+        public let activeScope: String?
+    }
+
+    /// Detect OAuth profiles in auth-profiles.json that have no matching ScopePolicy
+    /// and create policies for them automatically. This ensures OAuth providers appear
+    /// in the Providers tab without requiring the user to re-add them via the UI.
+    ///
+    /// If the currently active model in OpenClaw belongs to an adopted provider,
+    /// `activeScope` is set so the caller can promote that policy to #1.
+    ///
+    /// Called on app launch from `PolicyStore.init()`.
+    public static func autoAdoptOAuthProfiles(existingPolicies: [ScopePolicy]) -> OAuthAdoptionResult {
+        let oauthProfiles = listOAuthProfiles()
+        guard !oauthProfiles.isEmpty else { return OAuthAdoptionResult(policies: [], activeScope: nil) }
+
+        let existingScopes = Set(existingPolicies.map(\.scope))
+        var newPolicies: [ScopePolicy] = []
+
+        // Read the currently active model to check if an adopted provider is #1
+        let activeModel = currentModel()  // e.g. "openai-codex/gpt-5.3-codex"
+        let activeProvider = activeModel?.split(separator: "/").first.map(String.init)  // e.g. "openai-codex"
+        var activeScope: String?
+
+        for profile in oauthProfiles {
+            // The scope is the provider name (e.g. "openai-codex")
+            let scope = profile.provider
+
+            // Already has a policy — nothing to do
+            if existingScopes.contains(scope) { continue }
+
+            // Look up the service template for this OAuth provider
+            if let template = ServiceCatalog.find(scope) {
+                var policy = ScopePolicy(
+                    serviceName: template.name,
+                    scope: template.scope,
+                    allowedDomains: template.domains,
+                    approvalMode: .auto,
+                    hasSecret: false,  // OAuth tokens are in auth-profiles.json, not Keychain
+                    credentialType: template.credentialType,
+                    preferredFor: template.suggestedTags
+                )
+                // If the active model belongs to this provider, record the selected model
+                if let activeModel, activeProvider == providerForScope(scope) || activeProvider == scope {
+                    policy.selectedModel = activeModel
+                    activeScope = scope
+                    logger.info("Auto-adopted OAuth provider \(scope) is the active model (\(activeModel)) — promoting to #1")
+                }
+                newPolicies.append(policy)
+                logger.info("Auto-adopted orphaned OAuth profile \(profile.profileKey) as provider \(scope)")
+            } else {
+                // No template found — create a generic policy so it still shows up
+                var policy = ScopePolicy(
+                    serviceName: "\(profile.provider) (OAuth)",
+                    scope: scope,
+                    allowedDomains: [],
+                    approvalMode: .auto,
+                    hasSecret: false,
+                    credentialType: .bearerToken,
+                    preferredFor: []
+                )
+                if let activeModel, activeProvider == scope {
+                    policy.selectedModel = activeModel
+                    activeScope = scope
+                    logger.info("Auto-adopted unknown OAuth provider \(scope) is the active model — promoting to #1")
+                }
+                newPolicies.append(policy)
+                logger.info("Auto-adopted unknown OAuth profile \(profile.profileKey) as generic provider \(scope)")
+            }
+        }
+
+        return OAuthAdoptionResult(policies: newPolicies, activeScope: activeScope)
+    }
+
     // MARK: - Errors
 
     public enum ConfigError: LocalizedError {

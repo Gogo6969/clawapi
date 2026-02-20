@@ -1,8 +1,8 @@
 {
-  "version": "1.8.0",
+  "version": "1.8.1",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "OAuth Support & Model Protection\n• Preserve OAuth profiles (e.g. OpenAI Codex) during sync — never overwritten\n• Stop overriding the active model on launch when set externally via OpenClaw CLI\n• Add OpenAI Codex (OAuth) provider with browser-based sign-in flow\n• Manage OAuth connections in OpenClaw Sync tab (view, remove, restore backups)\n• Clean Slate now preserves OAuth profiles automatically",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.0/ClawAPI.zip",
-  "sha256": "07626cd8819467cc489e953db530e7a4439017464ee535228975b5e6530bd015"
+  "releaseNotes": "Auto-Adopt OAuth Profiles\n• OAuth providers (e.g. OpenAI Codex) now auto-appear in the Providers tab on launch\n• If the active model belongs to an OAuth provider, it's promoted to priority #1 automatically\n• No manual re-adding needed after setting up OAuth via OpenClaw CLI",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.1/ClawAPI.zip",
+  "sha256": "b33db875884a6fffbd2acf25a024bd43ba44d18569403bf43c0388009239d5ee"
 }

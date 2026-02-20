@@ -28,6 +28,25 @@ public final class PolicyStore: ObservableObject, Sendable {
         ensureDirectory(base)
         load()
 
+        // Auto-adopt orphaned OAuth profiles (OAuth profiles in auth-profiles.json
+        // with no matching ScopePolicy). This ensures OAuth providers appear in
+        // the Providers tab even if the user set them up via OpenClaw CLI.
+        let adoption = OpenClawConfig.autoAdoptOAuthProfiles(existingPolicies: policies)
+        if !adoption.policies.isEmpty {
+            for policy in adoption.policies {
+                if policy.scope == adoption.activeScope {
+                    // This OAuth provider is the currently active model — insert at #1
+                    policies.insert(policy, at: 0)
+                    logger.info("Auto-adopted OAuth provider \(policy.scope) as priority #1 (active model)")
+                } else {
+                    policies.append(policy)
+                }
+            }
+            normalizePriorities()
+            saveJSON(policies, to: policiesURL)
+            logger.info("Auto-adopted \(adoption.policies.count) orphaned OAuth profile(s)")
+        }
+
         // Listen for sync errors from OpenClawConfig
         syncErrorObserver = NotificationCenter.default.addObserver(
             forName: OpenClawConfig.syncErrorNotification,
