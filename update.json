@@ -1,8 +1,8 @@
 {
-  "version": "1.8.1",
+  "version": "1.8.2",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "Auto-Adopt OAuth Profiles\n• OAuth providers (e.g. OpenAI Codex) now auto-appear in the Providers tab on launch\n• If the active model belongs to an OAuth provider, it's promoted to priority #1 automatically\n• No manual re-adding needed after setting up OAuth via OpenClaw CLI",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.1/ClawAPI.zip",
-  "sha256": "b33db875884a6fffbd2acf25a024bd43ba44d18569403bf43c0388009239d5ee"
+  "releaseNotes": "OAuth Setup Fix & Cost Banner\n• Fix OAuth setup failing with \"Not authorized to send Apple events to Terminal\" (-1743)\n• Use .command script instead of AppleScript — no Automation permission needed\n• Add prominent cost banner: OpenAI Codex via OAuth is the cheapest way to code with AI",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.2/ClawAPI.zip",
+  "sha256": "7071177cc9206c521a12513eada0220a51cfad0f8ffd92ff7c41b9b66b781890"
 }

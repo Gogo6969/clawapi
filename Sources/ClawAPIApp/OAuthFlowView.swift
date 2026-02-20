@@ -149,15 +149,31 @@ struct OAuthFlowView: View {
                     instructionRow(number: 5, text: "Once complete, return here — ClawAPI will detect the new connection automatically")
                 }
 
-                HStack(spacing: 8) {
-                    Image(systemName: "info.circle")
-                        .foregroundStyle(.blue)
-                    Text("Uses **ChatGPT Plus** quota — no separate API billing.")
+                // Cost banner
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "dollarsign.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.green)
+                        Text("Cheapest Way to Code with AI")
+                            .font(.headline)
+                    }
+
+                    Text("OpenAI Codex uses your **ChatGPT Plus subscription** ($20/mo) instead of per-token API billing. For most coding tasks this is **significantly cheaper** than API keys — often 10-50x less.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("No separate API credits needed. Just sign in with your OpenAI account.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .padding(10)
-                .background(Color.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(Color.green.opacity(0.3), lineWidth: 1)
+                )
             }
             .padding(20)
         }
@@ -259,22 +275,36 @@ struct OAuthFlowView: View {
         // Build the openclaw onboard command
         let cmd = "/opt/homebrew/bin/openclaw onboard --auth-choice \(authChoice) --skip-daemon --skip-channels --skip-skills --skip-health --skip-ui"
 
-        // Open Terminal.app with the command
-        let script = """
-        tell application "Terminal"
-            activate
-            do script "\(cmd)"
-        end tell
+        // Write a temp shell script and open it in Terminal.app.
+        // This avoids NSAppleScript / Apple Events which requires Automation
+        // permission (-1743 "Not authorized to send Apple events to Terminal").
+        let tmpDir = FileManager.default.temporaryDirectory
+        let scriptURL = tmpDir.appendingPathComponent("clawapi-oauth-setup.command")
+
+        let scriptContent = """
+        #!/bin/bash
+        clear
+        echo "=== ClawAPI: OAuth Setup for \(template.name) ==="
+        echo ""
+        \(cmd)
+        echo ""
+        echo "Done. You can close this window."
         """
 
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
-            if let error = error {
-                errorMessage = "Failed to open Terminal: \(error)"
-                step = .error
-                return
-            }
+        do {
+            try scriptContent.write(to: scriptURL, atomically: true, encoding: .utf8)
+            // .command files must be executable for Terminal to run them
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
+
+            // `open` launches the .command file in Terminal.app — no Apple Events needed
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            process.arguments = [scriptURL.path]
+            try process.run()
+        } catch {
+            errorMessage = "Failed to open Terminal: \(error.localizedDescription)"
+            step = .error
+            return
         }
 
         terminalLaunched = true
