@@ -12,6 +12,14 @@ All keys stored in the macOS Keychain — never on disk.
 
 ---
 
+## Demo
+
+[![ClawAPI Demo](https://img.youtube.com/vi/py5JlKiTWLo/maxresdefault.jpg)](https://youtu.be/py5JlKiTWLo?si=oa-VG6WXVYfqIGyR)
+
+▶️ **[Watch the full demo on YouTube](https://youtu.be/py5JlKiTWLo?si=oa-VG6WXVYfqIGyR)**
+
+---
+
 ## Install
 
 ```bash
