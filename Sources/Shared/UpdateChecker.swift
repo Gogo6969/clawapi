@@ -166,6 +166,13 @@ public final class UpdateChecker: ObservableObject {
         }
 
         let parentDir = currentAppURL.deletingLastPathComponent()
+
+        // Verify the parent directory still exists and is writable
+        guard FileManager.default.isWritableFile(atPath: parentDir.path) else {
+            status = .error("Cannot update: the folder containing ClawAPI.app is not writable or no longer exists.")
+            return
+        }
+
         let backupURL = parentDir.appendingPathComponent("ClawAPI-old.app")
 
         // Remove old backup if it exists
