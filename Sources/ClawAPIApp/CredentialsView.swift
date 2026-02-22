@@ -16,6 +16,30 @@ struct CredentialsView: View {
     @AppStorage("dismissedOAuthBanner") private var dismissedOAuthBanner = false
     @State private var showingOAuthSetup = false
 
+    private var checkAllButton: some View {
+        Button {
+            store.checkAllHealth()
+        } label: {
+            HStack(spacing: 4) {
+                if store.isCheckingHealth {
+                    ProgressView()
+                        .controlSize(.mini)
+                } else {
+                    Image(systemName: "heart.text.clipboard")
+                }
+                Text("Check All")
+            }
+            .font(.caption.weight(.medium))
+            .foregroundColor(store.isCheckingHealth ? .secondary : .blue)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.blue.opacity(0.08), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(store.isCheckingHealth)
+        .help("Check all providers for valid API keys (free — no tokens used)")
+    }
+
     var filteredPolicies: [ScopePolicy] {
         if searchText.isEmpty {
             return store.policies
@@ -196,24 +220,7 @@ struct CredentialsView: View {
 
                 Divider().frame(height: 16)
 
-                Button {
-                    store.checkAllHealth()
-                } label: {
-                    HStack(spacing: 4) {
-                        if store.isCheckingHealth {
-                            ProgressView()
-                                .controlSize(.mini)
-                        } else {
-                            Image(systemName: "heart.text.clipboard")
-                        }
-                        Text("Check All")
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .disabled(store.isCheckingHealth)
-                .help("Check all providers for valid API keys (free — no tokens used)")
+                checkAllButton
             }
             .padding(8)
             .background(.background.secondary)
@@ -659,7 +666,7 @@ struct ScopePolicyRow: View {
                 Circle()
                     .fill(Color.secondary.opacity(0.4))
                     .frame(width: 8, height: 8)
-                    .help("Not yet verified — click Check All or use this provider")
+                    .help("Not yet verified — use the ♥ Check All button in the search bar above, or make a request through this provider")
             }
         case .checking:
             ProgressView()

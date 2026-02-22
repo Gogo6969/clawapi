@@ -4,5 +4,5 @@
   "minimumSystemVersion": "14.0",
   "releaseNotes": "Patch: Fix updater crash when app is run from a temporary directory, restore missing app icon",
   "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.7/ClawAPI.zip",
-  "sha256": "c82e609afc70edbd6d3897e1daee9d6ab36e61d2e559a46c21d480207eecf84c"
+  "sha256": "e7c86613a996ac44ddf9a8defb6c5ca957de7bc1b90eb2c9cb9e8fc2d7f14731"
 }
