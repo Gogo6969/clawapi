@@ -88,7 +88,18 @@ struct FAQView: View {
 
                     // ── Priority ──
                     FAQSection(icon: "list.number", color: .blue, title: "What does provider priority do?") {
-                        Text("Drag rows to reorder. The #1 provider is what OpenClaw prefers. Put your cheapest or fastest provider at the top, keep premium ones as fallbacks.")
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Drag rows to reorder. The #1 provider is what OpenClaw prefers. Put your cheapest or fastest provider at the top, keep premium ones as fallbacks.")
+                            Text("The order is also the **fallback chain** — when the primary can't handle something (vision, image analysis, embeddings), OpenClaw tries the next provider. Make sure a vision-capable provider with API credits is high in the list.")
+                        }
+                    }
+
+                    // ── OAuth ──
+                    FAQSection(icon: "person.badge.key", color: .green, title: "What is OpenAI Codex (OAuth)?") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("The cheapest way to code with AI. Uses your ChatGPT Plus subscription ($20/mo) instead of per-token API billing.")
+                            Text("OAuth covers chat and coding, but **not** vision, image analysis, or embeddings. Put a funded API key provider (like Anthropic) at #2 so OpenClaw can fall back to it for those features.")
+                        }
                     }
 
                     Divider()

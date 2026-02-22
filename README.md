@@ -100,6 +100,7 @@ When you switch models, a popup reminds you to start a new session in OpenClaw b
 | OpenCode Zen | | |
 | Vercel AI | | |
 | HuggingFace | `hf_...` | Open-source models |
+| OpenAI Codex | *OAuth (no key)* | GPT-5.3 Codex — uses ChatGPT Plus ($20/mo), cheapest option |
 | Ollama | *No key needed* | Local models (Llama, Mistral, etc.) |
 | Custom | *Any* | Add your own provider |
 
@@ -112,6 +113,27 @@ When you switch models, a popup reminds you to start a new session in OpenClaw b
 | **Activity** | See real-time request counts, recent activity, and pending approvals |
 | **Logs** | Full audit history with search, filtering, and details |
 | **Usage** | Check credit balances and billing for supported providers |
+
+## Provider Priority & Fallback Chain
+
+The order of providers in the Providers tab is the **fallback chain**:
+
+- **#1** is the **primary model** — OpenClaw uses it for all new sessions
+- **#2, #3, etc.** are **fallbacks** — used when the primary can't handle a request (quota exceeded, feature not supported, etc.)
+
+**Why this matters:** Some features like **vision/image analysis** and **embeddings** may not be supported by every provider. For example, OpenAI Codex (OAuth) uses your ChatGPT Plus subscription for chat/coding but doesn't cover API-only features like vision. If Codex is your #1 provider, make sure a vision-capable provider with API credits (like Anthropic or OpenAI with API billing) is high in your fallback chain.
+
+**To reorder:** Drag and drop provider rows in the Providers tab.
+
+## OpenAI Codex (OAuth)
+
+The cheapest way to use AI for coding. Instead of per-token API billing, Codex uses your **ChatGPT Plus subscription** ($20/mo).
+
+- Click `+` in the toolbar and select **OpenAI Codex (OAuth)**
+- A Terminal window opens to complete the OAuth sign-in with your OpenAI account
+- Once connected, ClawAPI detects it automatically
+
+**Limitations:** OAuth covers chat and coding completions only. For vision, image analysis, and embeddings, OpenClaw falls back to the next provider in your priority list. Make sure you have a funded API key provider (like Anthropic) as a fallback.
 
 ## Security
 

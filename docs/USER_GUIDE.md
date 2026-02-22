@@ -113,14 +113,26 @@ Select a model and it becomes the active model for that provider. If this is you
 
 A popup will remind you of this each time you switch. You can check "Don't show this again" if you prefer.
 
-### Provider Priority
+### Provider Priority & Fallback Chain
 
-The order of providers in the list determines priority:
+The order of providers in the list determines the **fallback chain**:
 
 - **#1** is the **primary** provider — its model becomes OpenClaw's default
-- **#2, #3, etc.** become **fallbacks** — used if the primary is unavailable
+- **#2, #3, etc.** become **fallbacks** — used when the primary can't handle a request (quota exceeded, feature not supported, etc.)
 
 To reorder, **drag and drop** a provider row to a new position.
+
+**Why this matters:** Some features like **vision/image analysis** and **embeddings** aren't supported by every provider. For example, OpenAI Codex (OAuth) covers chat/coding but not vision. If Codex is #1, put a vision-capable provider with API credits (like Anthropic) at #2 so OpenClaw can fall back to it for image analysis.
+
+### OpenAI Codex (OAuth)
+
+The cheapest way to use AI for coding. Instead of per-token API billing, Codex uses your **ChatGPT Plus subscription** ($20/mo).
+
+1. Click `+` in the toolbar and select **OpenAI Codex (OAuth)**
+2. A Terminal window opens to complete the OAuth sign-in with your OpenAI account
+3. Once connected, ClawAPI detects it automatically
+
+**Limitations:** OAuth covers chat and coding completions only. For vision, image analysis, and embeddings, OpenClaw falls back to the next provider in your priority list. Make sure you have a funded API key provider as a fallback.
 
 ### Enabling and Disabling
 
