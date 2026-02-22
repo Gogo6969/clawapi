@@ -12,7 +12,7 @@ struct CredentialsView: View {
     @State private var policyToDelete: ScopePolicy?
     @State private var showModelSwitchTip = false
     @AppStorage("dismissedKeychainBanner") private var dismissedKeychainBanner = false
-    @AppStorage("dismissedModelSwitchTip") private var dismissedModelSwitchTip = false
+    @AppStorage("dismissedModelSwitchTipV2") private var dismissedModelSwitchTip = false
     @AppStorage("dismissedOAuthBanner") private var dismissedOAuthBanner = false
     @State private var showingOAuthSetup = false
 
@@ -292,7 +292,7 @@ struct CredentialsView: View {
 
 private struct ModelSwitchInfoSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("dismissedModelSwitchTip") private var dismissedForever = false
+    @AppStorage("dismissedModelSwitchTipV2") private var dismissedForever = false
     var onCheckSync: () -> Void = {}
 
     var body: some View {
@@ -318,18 +318,18 @@ private struct ModelSwitchInfoSheet: View {
             // Instructions
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "info.circle.fill")
-                        .foregroundStyle(.blue)
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
                         .frame(width: 20)
-                    Text("Existing chat sessions will continue using their original model.")
+                    Text("New sessions (including **`/new`** in Telegram) will automatically use the updated model.")
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
                 HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "bubble.left.fill")
-                        .foregroundStyle(.green)
+                    Image(systemName: "info.circle.fill")
+                        .foregroundStyle(.blue)
                         .frame(width: 20)
-                    Text("To use the new model, start a **new session** in OpenClaw by typing **`/new`** in the chat.")
+                    Text("**Active conversations** keep their current model to avoid losing progress. Type **`/new`** to start a fresh session with the new model.")
                         .fixedSize(horizontal: false, vertical: true)
                 }
 

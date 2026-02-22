@@ -260,6 +260,10 @@ public enum OpenClawConfig {
         let newData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys])
         try writeConfig(newData)
 
+        // Keep the default session template in sync so /new in Telegram
+        // picks up the new model (only touches agent:main:main).
+        syncDefaultSessionModel(to: newModel)
+
         logger.info("Set OpenClaw model: \(newModel), fallbacks: \(finalFallbacks.joined(separator: ", "))")
     }
 
@@ -288,6 +292,52 @@ public enum OpenClawConfig {
         try writeConfig(newData)
 
         logger.info("Added \(model) to OpenClaw fallback chain")
+    }
+
+    // MARK: - Session Model Sync
+
+    /// Path to OpenClaw's session state (local mode).
+    private static let sessionsURL: URL = {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".openclaw")
+            .appendingPathComponent("agents/main/sessions/sessions.json")
+    }()
+
+    /// Update the model on the default interactive session (`agent:main:main`).
+    ///
+    /// OpenClaw caches the model per session. When ClawAPI changes the primary
+    /// model, the default session still points to the old one — so `/new` in
+    /// Telegram keeps using the stale model. This fixes it by updating only the
+    /// default template session. Active cron/conversation sessions are never touched.
+    private static func syncDefaultSessionModel(to newModel: String) {
+        let bareModel: String
+        if let slash = newModel.firstIndex(of: "/") {
+            bareModel = String(newModel[newModel.index(after: slash)...])
+        } else {
+            bareModel = newModel
+        }
+
+        guard FileManager.default.fileExists(atPath: sessionsURL.path) else { return }
+
+        let defaultKey = "agent:main:main"
+
+        do {
+            let data = try Data(contentsOf: sessionsURL)
+            guard var sessions = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+            guard var mainSession = sessions[defaultKey] as? [String: Any] else { return }
+
+            let oldModel = mainSession["model"] as? String ?? ""
+            guard oldModel != bareModel else { return }
+
+            mainSession["model"] = bareModel
+            sessions[defaultKey] = mainSession
+
+            let written = try JSONSerialization.data(withJSONObject: sessions, options: [.prettyPrinted, .sortedKeys])
+            try written.write(to: sessionsURL, options: .atomic)
+            logger.info("Updated default session model: \(oldModel) → \(bareModel)")
+        } catch {
+            logger.warning("Failed to sync default session model: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Auth Profile Sync
