@@ -5,7 +5,6 @@ struct CredentialsView: View {
     @EnvironmentObject var store: PolicyStore
     @Binding var selectedTab: AppTab
     @Binding var showingPendingReview: Bool
-    @Binding var logsFilter: AuditResult?
     @State private var searchText = ""
     @State private var selectedPolicy: ScopePolicy?
     @State private var showingDeleteAlert = false
@@ -80,7 +79,7 @@ struct CredentialsView: View {
                     color: .green
                 )
                 .help("Click to see approved requests")
-                .onTapGesture { logsFilter = .approved; selectedTab = .logs }
+                .onTapGesture { selectedTab = .activity }
 
                 StatusCard(
                     title: "Denied",
@@ -89,7 +88,7 @@ struct CredentialsView: View {
                     color: .red
                 )
                 .help("Click to see denied requests")
-                .onTapGesture { logsFilter = .denied; selectedTab = .logs }
+                .onTapGesture { selectedTab = .activity }
             }
             .padding()
 

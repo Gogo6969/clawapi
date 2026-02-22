@@ -5,102 +5,140 @@ struct ActivityView: View {
     @EnvironmentObject var store: PolicyStore
     @Binding var selectedTab: AppTab
     @Binding var showingPendingReview: Bool
-    @Binding var logsFilter: AuditResult?
+    @State private var filterResult: AuditResult?
+    @State private var searchText = ""
+
+    private var filteredEntries: [AuditEntry] {
+        store.auditEntries.filter { entry in
+            let matchesSearch = searchText.isEmpty
+                || entry.scope.localizedCaseInsensitiveContains(searchText)
+                || entry.reason.localizedCaseInsensitiveContains(searchText)
+                || entry.requestingHost.localizedCaseInsensitiveContains(searchText)
+
+            let matchesFilter = filterResult == nil || entry.result == filterResult
+
+            return matchesSearch && matchesFilter
+        }
+    }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Status cards
-                HStack(spacing: 16) {
-                    StatusCard(
-                        title: "Providers",
-                        value: "\(store.policies.filter(\.isEnabled).count)/\(store.policies.count)",
-                        icon: "key.fill",
-                        color: .blue
-                    )
-                    .help("Click to view all providers")
-                    .onTapGesture { selectedTab = .providers }
+        VStack(spacing: 0) {
+            // Status cards
+            HStack(spacing: 16) {
+                StatusCard(
+                    title: "Providers",
+                    value: "\(store.policies.filter(\.isEnabled).count)/\(store.policies.count)",
+                    icon: "key.fill",
+                    color: .blue
+                )
+                .help("Click to view all providers")
+                .onTapGesture { selectedTab = .providers }
 
-                    StatusCard(
-                        title: "Pending",
-                        value: "\(store.pendingRequests.count)",
-                        icon: "clock.fill",
-                        color: store.pendingRequests.isEmpty ? .green : .orange
-                    )
-                    .help("Click to review pending requests")
-                    .onTapGesture { showingPendingReview = true }
+                StatusCard(
+                    title: "Pending",
+                    value: "\(store.pendingRequests.count)",
+                    icon: "clock.fill",
+                    color: store.pendingRequests.isEmpty ? .green : .orange
+                )
+                .help("Click to review pending requests")
+                .onTapGesture { showingPendingReview = true }
 
-                    StatusCard(
-                        title: "Approved",
-                        value: "\(store.auditEntries.filter { $0.result == .approved }.count)",
-                        icon: "checkmark.shield.fill",
-                        color: .green
-                    )
-                    .help("Click to see approved requests")
-                    .onTapGesture { logsFilter = .approved; selectedTab = .logs }
+                StatusCard(
+                    title: "Approved",
+                    value: "\(store.auditEntries.filter { $0.result == .approved }.count)",
+                    icon: "checkmark.shield.fill",
+                    color: .green
+                )
+                .help("Filter by approved")
+                .onTapGesture { filterResult = filterResult == .approved ? nil : .approved }
 
-                    StatusCard(
-                        title: "Denied",
-                        value: "\(store.auditEntries.filter { $0.result == .denied }.count)",
-                        icon: "xmark.shield.fill",
-                        color: .red
-                    )
-                    .help("Click to see denied requests")
-                    .onTapGesture { logsFilter = .denied; selectedTab = .logs }
-                }
-
-                // Recent audit activity
-                GroupBox {
-                    VStack(spacing: 0) {
-                        if store.auditEntries.isEmpty {
-                            Text("No activity yet")
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, minHeight: 100)
-                        } else {
-                            ForEach(store.auditEntries.prefix(5)) { entry in
-                                AuditRow(entry: entry)
-                                if entry.id != store.auditEntries.prefix(5).last?.id {
-                                    Divider()
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Label("Recent Activity", systemImage: "clock.arrow.circlepath")
-                        Spacer()
-                        Text("Last 5 events")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .help("Click to see full log history")
-                .onTapGesture { logsFilter = nil; selectedTab = .logs }
-
-                // Pending requests
-                if !store.pendingRequests.isEmpty {
-                    GroupBox {
-                        VStack(spacing: 0) {
-                            ForEach(store.pendingRequests) { request in
-                                PendingRow(request: request)
-                                if request.id != store.pendingRequests.last?.id {
-                                    Divider()
-                                }
-                            }
-                        }
-                    } label: {
-                        HStack {
-                            Label("Pending Requests", systemImage: "bell.badge")
-                            Spacer()
-                            Text("\(store.pendingRequests.count) awaiting review")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        }
-                    }
-                    .help("Requests from OpenClaw that need your approval. Click Approve or Deny for each.")
-                }
+                StatusCard(
+                    title: "Denied",
+                    value: "\(store.auditEntries.filter { $0.result == .denied }.count)",
+                    icon: "xmark.shield.fill",
+                    color: .red
+                )
+                .help("Filter by denied")
+                .onTapGesture { filterResult = filterResult == .denied ? nil : .denied }
             }
             .padding()
+
+            // Pending requests
+            if !store.pendingRequests.isEmpty {
+                Divider()
+                VStack(spacing: 0) {
+                    ForEach(store.pendingRequests) { request in
+                        PendingRow(request: request)
+                        if request.id != store.pendingRequests.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(.orange.opacity(0.05))
+            }
+
+            Divider()
+
+            // Search / filter bar
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search activity...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .help("Search by provider, domain, or reason")
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Clear search filter")
+                }
+
+                Divider()
+                    .frame(height: 20)
+
+                Picker("Filter", selection: $filterResult) {
+                    Text("All").tag(AuditResult?.none)
+                    Label("Approved", systemImage: "checkmark.circle.fill")
+                        .tag(AuditResult?.some(.approved))
+                    Label("Denied", systemImage: "xmark.circle.fill")
+                        .tag(AuditResult?.some(.denied))
+                    Label("Error", systemImage: "exclamationmark.triangle.fill")
+                        .tag(AuditResult?.some(.error))
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 300)
+                .help("Filter log entries by result")
+            }
+            .padding(8)
+            .background(.background.secondary)
+
+            Divider()
+
+            // Full log list
+            List {
+                ForEach(filteredEntries) { entry in
+                    LogEntryRow(entry: entry)
+                }
+            }
+            .listStyle(.inset(alternatesRowBackgrounds: true))
+            .overlay {
+                if filteredEntries.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Activity", systemImage: "doc.text.magnifyingglass")
+                    } description: {
+                        Text(searchText.isEmpty && filterResult == nil
+                            ? "No activity yet. Events appear here when you manage providers, run health checks, or use the proxy."
+                            : "No entries match your filters. Try adjusting your search or filter."
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -140,43 +178,53 @@ struct StatusCard: View {
     }
 }
 
-// MARK: - Audit Row
+// MARK: - Log Entry Row
 
-struct AuditRow: View {
+private struct LogEntryRow: View {
     let entry: AuditEntry
 
     var body: some View {
-        HStack {
-            resultIcon
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.scope)
-                    .font(.headline)
-                Text(entry.reason)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
+        HStack(spacing: 12) {
+            HStack(spacing: 4) {
+                Image(systemName: resultIcon)
+                    .foregroundStyle(resultColor)
                 Text(entry.result.rawValue.capitalized)
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(resultColor)
-                Text(entry.timestamp, style: .relative)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
             }
+            .frame(width: 90, alignment: .leading)
+
+            Text(entry.scope)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .frame(width: 120, alignment: .leading)
+
+            Text(entry.requestingHost)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(width: 140, alignment: .leading)
+
+            Text(entry.reason)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Spacer()
+
+            Text(entry.timestamp, style: .relative)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 100, alignment: .trailing)
+
+            Text(entry.detail ?? "—")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 120, alignment: .trailing)
         }
-        .padding(.vertical, 6)
-        .help("Scope: \(entry.scope) | Host: \(entry.requestingHost) | \(entry.detail ?? "No additional detail")")
     }
 
-    private var resultIcon: some View {
-        Image(systemName: resultIconName)
-            .foregroundStyle(resultColor)
-            .frame(width: 24)
-    }
-
-    private var resultIconName: String {
+    private var resultIcon: String {
         switch entry.result {
         case .approved: "checkmark.circle.fill"
         case .denied: "xmark.circle.fill"

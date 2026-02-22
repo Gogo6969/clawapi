@@ -23,13 +23,7 @@ struct HelpPopoverView: View {
                     icon: "gauge",
                     color: .blue,
                     title: "Activity",
-                    text: "Request counts and recent activity. Click any card for details."
-                )
-                HelpSection(
-                    icon: "list.bullet.rectangle",
-                    color: .orange,
-                    title: "Logs",
-                    text: "Full history of every API request. Filter by result or search by provider."
+                    text: "Provider changes, health checks, and proxy requests. Search and filter the full history."
                 )
                 HelpSection(
                     icon: "chart.bar",

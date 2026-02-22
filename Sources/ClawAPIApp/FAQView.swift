@@ -60,10 +60,7 @@ struct FAQView: View {
                                 Text("Shows what's synced to OpenClaw right now — active model, fallbacks, and provider config.")
                             }
                             FAQSubsection(title: "Activity") {
-                                Text("Request counts and recent activity. Click any card to jump to details.")
-                            }
-                            FAQSubsection(title: "Logs") {
-                                Text("Full history of every API request. Filter by result or search by provider.")
+                                Text("Provider changes, health checks, and proxy requests. Search and filter the full history. Appears once there is activity to show.")
                             }
                             FAQSubsection(title: "Usage") {
                                 Text("Check your credit balance and spending for providers that support it.")

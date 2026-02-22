@@ -1,8 +1,8 @@
 {
-  "version": "1.8.9",
+  "version": "1.9.0",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "• Fixed health checks: Check All now reliably verifies all providers\n• Blue dot for OAuth providers (connected, credits not verified)\n• Last 4 characters of API keys shown for easy identification\n• Instant tooltips on health dots (no more 2-second delay)\n• Fixed OAuth providers incorrectly classified as local",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.9/ClawAPI.zip",
-  "sha256": "29065ef844cba961c48cb6a250b44500b881cf90ce80c7df86368c77f994e5e4"
+  "releaseNotes": "• Merged Activity & Logs into one tab (hidden when empty)\n• Activity logs provider changes, health checks, and proxy traffic\n• Cross-process sync: daemon activity appears in real-time\n• Batch keychain preload on launch (single prompt instead of per-provider)\n• Cleaned up redundant UI tabs",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.9.0/ClawAPI.zip",
+  "sha256": "0c1dcec63fcfd792d3762ba7cc3ec1ce64288d51930892c5e145f23280fc47ba"
 }

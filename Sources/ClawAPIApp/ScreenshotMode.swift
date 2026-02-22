@@ -173,15 +173,7 @@ enum ScreenshotMode {
             to: "05-activity"
         )
 
-        // 6. Logs tab
-        print("6/11: Logs")
-        render(
-            LogsScreenshot(store: store),
-            width: 1100, height: 700,
-            to: "06-logs"
-        )
-
-        // 7. Usage tab
+        // 6. Usage tab
         print("7/11: Usage")
         render(
             UsageScreenshot(store: store),
@@ -420,8 +412,7 @@ struct ProvidersScreenshot: View {
     var body: some View {
         CredentialsView(
             selectedTab: .constant(.providers),
-            showingPendingReview: .constant(false),
-            logsFilter: .constant(nil)
+            showingPendingReview: .constant(false)
         )
         .environmentObject(store)
     }
@@ -440,20 +431,7 @@ struct ActivityScreenshot: View {
     var body: some View {
         ActivityView(
             selectedTab: .constant(.activity),
-            showingPendingReview: .constant(false),
-            logsFilter: .constant(nil)
-        )
-        .environmentObject(store)
-    }
-}
-
-struct LogsScreenshot: View {
-    let store: PolicyStore
-    var body: some View {
-        LogsView(
-            selectedTab: .constant(.logs),
-            showingPendingReview: .constant(false),
-            filterResult: .constant(nil)
+            showingPendingReview: .constant(false)
         )
         .environmentObject(store)
     }

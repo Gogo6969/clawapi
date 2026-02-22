@@ -42,7 +42,7 @@ enum TitleBarBranding {
 }
 
 enum AppTab: Hashable {
-    case providers, model, activity, logs, usage
+    case providers, model, activity, usage
 }
 
 struct ContentView: View {
@@ -58,11 +58,10 @@ struct ContentView: View {
     @State private var showingConnectionInfo = false
     @AppStorage("dismissedConnectionModeInfo") private var dismissedConnectionModeInfo = false
     @StateObject private var updateChecker = UpdateChecker()
-    @State private var logsFilter: AuditResult?
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            CredentialsView(selectedTab: $selectedTab, showingPendingReview: $showingPendingReview, logsFilter: $logsFilter)
+            CredentialsView(selectedTab: $selectedTab, showingPendingReview: $showingPendingReview)
                 .tabItem {
                     Label("Providers", systemImage: "key")
                 }
@@ -74,17 +73,13 @@ struct ContentView: View {
                 }
                 .tag(AppTab.model)
 
-            ActivityView(selectedTab: $selectedTab, showingPendingReview: $showingPendingReview, logsFilter: $logsFilter)
-                .tabItem {
-                    Label("Activity", systemImage: "gauge")
-                }
-                .tag(AppTab.activity)
-
-            LogsView(selectedTab: $selectedTab, showingPendingReview: $showingPendingReview, filterResult: $logsFilter)
-                .tabItem {
-                    Label("Logs", systemImage: "list.bullet.rectangle")
-                }
-                .tag(AppTab.logs)
+            if !store.auditEntries.isEmpty {
+                ActivityView(selectedTab: $selectedTab, showingPendingReview: $showingPendingReview)
+                    .tabItem {
+                        Label("Activity", systemImage: "gauge")
+                    }
+                    .tag(AppTab.activity)
+            }
 
             UsageView()
                 .tabItem {

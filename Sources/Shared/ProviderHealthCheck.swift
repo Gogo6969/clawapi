@@ -22,6 +22,10 @@ public enum ProviderHealth: Sendable, Equatable {
 /// `userInfo` keys: "scope" (String), "statusCode" (Int), "detail" (String).
 public let providerHealthNotification = Notification.Name("com.clawapi.providerHealth")
 
+/// Distributed notification posted when audit entries or pending requests change on disk.
+/// The app listens for this and reloads from disk so Activity and Logs stay current.
+public let storeChangedNotification = Notification.Name("com.clawapi.storeChanged")
+
 /// Determines provider health **passively** from real proxy traffic (audit log)
 /// and supports manual checks via free GET /models endpoints (no tokens consumed).
 public enum ProviderHealthCheck {

@@ -20,6 +20,9 @@ public final class PolicyStore: ObservableObject, Sendable {
     private let pendingURL: URL
     private var syncErrorObserver: Any?
     private var healthObserver: Any?
+    private var storeChangeObserver: Any?
+    /// Suppress reload when we ourselves just wrote the file.
+    private var suppressReload = false
 
     /// Keychain for syncing to OpenClaw on save.
     public let keychain = KeychainService()
@@ -69,16 +72,19 @@ public final class PolicyStore: ObservableObject, Sendable {
             }
         }
 
-        // Only access Keychain if auth profiles actually need syncing.
-        // This avoids unnecessary macOS permission prompts on every launch
-        // (especially with ad-hoc signing where each rebuild is a new binary).
+        // Preload ALL keychain secrets in one batch on launch.
+        // This triggers at most ONE macOS Keychain prompt instead of one per provider
+        // (needed for key suffix display, health checks, and sync).
+        if !policies.isEmpty {
+            keychain.preloadAll()
+        }
+
+        // Sync to OpenClaw if auth profiles need updating, otherwise just model priority.
         let needsSync = OpenClawConfig.needsAuthProfileSync(policies: policies)
         logger.info("Launch sync check: needsAuthProfileSync=\(needsSync)")
         if needsSync {
-            keychain.preloadAll()
             OpenClawConfig.syncToOpenClaw(policies: policies, keychain: keychain)
         } else {
-            // Lightweight sync: only update model priority in openclaw.json
             OpenClawConfig.syncModelOnly(policies: policies)
         }
 
@@ -98,6 +104,18 @@ public final class PolicyStore: ObservableObject, Sendable {
             Task { @MainActor [weak self] in
                 let health = ProviderHealthCheck.classifyStatusCode(statusCode, body: nil)
                 self?.healthStatus[scope] = health
+            }
+        }
+
+        // Listen for audit/pending changes written by the daemon (another process).
+        // When received, reload from disk so Activity and Logs tabs stay current.
+        storeChangeObserver = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name(storeChangedNotification.rawValue),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.reloadFromDisk()
             }
         }
     }
@@ -146,18 +164,52 @@ public final class PolicyStore: ObservableObject, Sendable {
         policies.append(policy)
         normalizePriorities()
         save(fullSync: true)
+        addAuditEntry(AuditEntry(
+            scope: policy.scope,
+            requestingHost: "ClawAPI",
+            reason: "Provider added",
+            result: .approved,
+            detail: "Added \(policy.serviceName)"
+        ))
     }
 
     public func removePolicy(_ policy: ScopePolicy) {
         policies.removeAll { $0.id == policy.id }
         normalizePriorities()
         save(fullSync: true)
+        addAuditEntry(AuditEntry(
+            scope: policy.scope,
+            requestingHost: "ClawAPI",
+            reason: "Provider removed",
+            result: .denied,
+            detail: "Removed \(policy.serviceName)"
+        ))
     }
 
     public func updatePolicy(_ policy: ScopePolicy) {
         if let index = policies.firstIndex(where: { $0.id == policy.id }) {
+            let old = policies[index]
             policies[index] = policy
             save(fullSync: true)
+
+            // Log meaningful changes (enable/disable, secret added/removed)
+            if old.isEnabled != policy.isEnabled {
+                addAuditEntry(AuditEntry(
+                    scope: policy.scope,
+                    requestingHost: "ClawAPI",
+                    reason: policy.isEnabled ? "Provider enabled" : "Provider disabled",
+                    result: policy.isEnabled ? .approved : .denied,
+                    detail: "\(policy.serviceName) \(policy.isEnabled ? "enabled" : "disabled")"
+                ))
+            } else if old.hasSecret != policy.hasSecret && policy.hasSecret {
+                addAuditEntry(AuditEntry(
+                    scope: policy.scope,
+                    requestingHost: "ClawAPI",
+                    reason: "API key updated",
+                    result: .approved,
+                    detail: "Secret stored for \(policy.serviceName)"
+                ))
+            }
         }
     }
 
@@ -235,6 +287,30 @@ public final class PolicyStore: ObservableObject, Sendable {
                     self.healthStatus[scope] = health
                 }
                 self.isCheckingHealth = false
+
+                // Log health check results to Activity
+                for (scope, health) in results {
+                    guard health != .checking && health != .unknown else { continue }
+                    let result: AuditResult
+                    let detail: String
+                    switch health {
+                    case .healthy:
+                        result = .approved; detail = "Healthy"
+                    case .dead(let reason):
+                        result = .error; detail = reason
+                    case .unreachable(let reason):
+                        result = .denied; detail = "Unreachable: \(reason)"
+                    case .unknown, .checking:
+                        continue
+                    }
+                    self.addAuditEntry(AuditEntry(
+                        scope: scope,
+                        requestingHost: "ClawAPI",
+                        reason: "Health check",
+                        result: result,
+                        detail: detail
+                    ))
+                }
             }
         }
     }
@@ -248,19 +324,43 @@ public final class PolicyStore: ObservableObject, Sendable {
         healthStatus[entry.scope] = ProviderHealthCheck.classifyStatusCode(statusCode, body: nil)
     }
 
+    // MARK: - Reload from disk (cross-process sync)
+
+    /// Reload audit entries and pending requests from disk.
+    /// Called when the daemon (another process) posts a storeChanged notification.
+    public func reloadFromDisk() {
+        guard !suppressReload else { return }
+        let newAudit: [AuditEntry] = loadJSON(from: auditURL) ?? []
+        let newPending: [PendingRequest] = loadJSON(from: pendingURL) ?? []
+        if newAudit.count != auditEntries.count {
+            auditEntries = newAudit
+            logger.info("Reloaded \(newAudit.count) audit entries from disk")
+        }
+        if newPending.count != pendingRequests.count {
+            pendingRequests = newPending
+            logger.info("Reloaded \(newPending.count) pending requests from disk")
+        }
+    }
+
     // MARK: - Audit
 
     public func addAuditEntry(_ entry: AuditEntry) {
         auditEntries.insert(entry, at: 0)
         updateHealthFromAudit(entry)
+        suppressReload = true
         save()
+        suppressReload = false
+        notifyStoreChanged()
     }
 
     // MARK: - Pending Requests
 
     public func addPendingRequest(_ request: PendingRequest) {
         pendingRequests.append(request)
+        suppressReload = true
         save()
+        suppressReload = false
+        notifyStoreChanged()
     }
 
     public func approvePendingRequest(_ request: PendingRequest) {
@@ -291,6 +391,19 @@ public final class PolicyStore: ObservableObject, Sendable {
 
     public func policy(forScope scope: String) -> ScopePolicy? {
         policies.first { $0.scope == scope }
+    }
+
+    // MARK: - Cross-process notification
+
+    /// Post a distributed notification so other processes (app ↔ daemon) know
+    /// that audit or pending data changed on disk and should be reloaded.
+    private func notifyStoreChanged() {
+        DistributedNotificationCenter.default().postNotificationName(
+            NSNotification.Name(storeChangedNotification.rawValue),
+            object: nil,
+            userInfo: nil,
+            deliverImmediately: true
+        )
     }
 
     // MARK: - Private helpers
