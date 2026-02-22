@@ -24,17 +24,10 @@ struct ModelSelectorView: View {
 
     private var enabledProviders: [ScopePolicy] {
         store.policies
-            .filter { $0.isEnabled && $0.hasSecret && $0.approvalMode == .auto }
+            .filter { $0.isEnabled && ($0.hasSecret || !(ServiceCatalog.find($0.scope)?.requiresKey ?? true)) && $0.approvalMode == .auto }
             .sorted { $0.priority < $1.priority }
     }
 
-    private var currentModel: String? {
-        OpenClawConfig.currentModel()
-    }
-
-    private var currentFallbacks: [String] {
-        OpenClawConfig.currentFallbacks()
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -64,59 +57,46 @@ struct ModelSelectorView: View {
             Divider()
 
             List {
-                // Current model
-                Section("Active Model") {
-                    if let model = currentModel {
-                        HStack(spacing: 10) {
-                            Image(systemName: "brain")
-                                .font(.title3)
-                                .foregroundStyle(.green)
-                                .frame(width: 24)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(model)
-                                    .font(.system(.body, design: .monospaced, weight: .medium))
-                                Text("Primary model in OpenClaw")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                // ── Synced Providers ──
+                Section {
+                    if enabledProviders.isEmpty {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(.orange.opacity(0.15))
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(.orange)
                             }
-                        }
-                    } else {
-                        HStack(spacing: 10) {
-                            Image(systemName: "exclamationmark.triangle")
-                                .foregroundStyle(.orange)
-                            Text("No model configured in OpenClaw")
+                            Text("No enabled providers. Add and enable providers in the Providers tab.")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
-                    }
-
-                    if !currentFallbacks.isEmpty {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Fallback chain:")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            ForEach(Array(currentFallbacks.enumerated()), id: \.offset) { i, fb in
-                                HStack(spacing: 6) {
-                                    Text("\(i + 1).")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: 16, alignment: .trailing)
-                                    Text(fb)
-                                        .font(.system(.caption, design: .monospaced))
-                                }
-                            }
+                    } else {
+                        ForEach(Array(enabledProviders.enumerated()), id: \.element.id) { index, policy in
+                            SyncedProviderRow(policy: policy, rank: index + 1, isFirst: index == 0)
                         }
-                        .padding(.top, 4)
+                    }
+                } header: {
+                    Text("Synced Providers")
+                } footer: {
+                    if !enabledProviders.isEmpty {
+                        Text("Provider #1 is the primary model in OpenClaw. If it fails, OpenClaw tries each fallback in order. Drag to reorder in the Providers tab.")
                     }
                 }
 
-                // Gateway restart
+                // ── Gateway Reload ──
                 Section {
                     HStack(spacing: 12) {
-                        Image(systemName: "arrow.clockwise.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(gatewayStatusColor)
-                            .frame(width: 24)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(gatewayStatusColor.opacity(0.15))
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "arrow.clockwise.circle.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(gatewayStatusColor)
+                        }
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Gateway Reload")
@@ -125,6 +105,7 @@ struct ModelSelectorView: View {
                             Text(gatewayStatusText)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                                .lineLimit(2)
                         }
 
                         Spacer()
@@ -135,7 +116,6 @@ struct ModelSelectorView: View {
                                 let ok = OpenClawConfig.restartGateway()
                                 DispatchQueue.main.async {
                                     gatewayStatus = ok ? .success : .failed
-                                    // Reset after 3 seconds
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                                         gatewayStatus = .idle
                                     }
@@ -160,13 +140,17 @@ struct ModelSelectorView: View {
                     Text("Sends a reload signal to the OpenClaw gateway. Use this if the gateway needs to pick up config changes.")
                 }
 
-                // Clean Slate
+                // ── Clean Slate ──
                 Section {
                     HStack(spacing: 12) {
-                        Image(systemName: "eraser.line.dashed.fill")
-                            .font(.title3)
-                            .foregroundStyle(cleanSlateIconColor)
-                            .frame(width: 24)
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(cleanSlateIconColor.opacity(0.15))
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "eraser.line.dashed.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(cleanSlateIconColor)
+                        }
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Clean Slate")
@@ -175,6 +159,7 @@ struct ModelSelectorView: View {
                             Text(cleanSlateStatusText)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                                .lineLimit(2)
                         }
 
                         Spacer()
@@ -235,15 +220,19 @@ struct ModelSelectorView: View {
                     RestoreBackupSheet()
                 }
 
-                // OAuth Connections
+                // ── OAuth Connections ──
                 if !oauthProfiles.isEmpty {
                     Section {
                         ForEach(oauthProfiles, id: \.profileKey) { profile in
                             HStack(spacing: 12) {
-                                Image(systemName: "person.badge.key.fill")
-                                    .font(.title3)
-                                    .foregroundStyle(.blue)
-                                    .frame(width: 24)
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(.blue.opacity(0.15))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: "person.badge.key.fill")
+                                        .font(.system(size: 18))
+                                        .foregroundStyle(.blue)
+                                }
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(profile.provider)
@@ -251,7 +240,7 @@ struct ModelSelectorView: View {
                                         .fontWeight(.medium)
                                     HStack(spacing: 4) {
                                         Text("OAuth")
-                                            .font(.caption2)
+                                            .font(.caption2.weight(.semibold))
                                             .padding(.horizontal, 5)
                                             .padding(.vertical, 1)
                                             .background(.blue.opacity(0.15), in: Capsule())
@@ -261,6 +250,8 @@ struct ModelSelectorView: View {
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
                                                 .fontDesign(.monospaced)
+                                                .lineLimit(1)
+                                                .truncationMode(.tail)
                                         }
                                     }
                                 }
@@ -277,6 +268,7 @@ struct ModelSelectorView: View {
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
                             }
+                            .padding(.vertical, 2)
                         }
 
                         if let error = oauthRemoveError {
@@ -320,40 +312,19 @@ struct ModelSelectorView: View {
                     }
                 }
 
-                // Synced providers
-                Section {
-                    if enabledProviders.isEmpty {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle")
-                                .foregroundStyle(.orange)
-                            Text("No enabled providers. Add and enable providers in the Providers tab.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    } else {
-                        ForEach(Array(enabledProviders.enumerated()), id: \.element.id) { index, policy in
-                            SyncedProviderRow(policy: policy, rank: index + 1, isFirst: index == 0)
-                        }
-                    }
-                } header: {
-                    Text("Synced Providers")
-                } footer: {
-                    if !enabledProviders.isEmpty {
-                        Text("ClawAPI writes API keys directly into OpenClaw's auth-profiles.json. The #1 provider's default model becomes OpenClaw's primary model. Reorder in the Providers tab.")
-                    }
-                }
-
-                // How it works
+                // ── How It Works ──
                 Section("How It Works") {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 10) {
                         InfoRow(icon: "1.circle.fill", color: .blue,
-                                text: "You add API keys in ClawAPI's Providers tab")
+                                text: "Add API keys in the Providers tab")
                         InfoRow(icon: "2.circle.fill", color: .blue,
-                                text: "ClawAPI syncs keys into OpenClaw's auth-profiles.json on every change")
+                                text: "ClawAPI syncs keys into OpenClaw's auth-profiles.json")
                         InfoRow(icon: "3.circle.fill", color: .blue,
-                                text: "The top-priority provider becomes OpenClaw's primary model")
-                        InfoRow(icon: "4.circle.fill", color: .green,
-                                text: "OpenClaw talks directly to providers using your API keys — fast and native")
+                                text: "Provider #1 becomes the primary model")
+                        InfoRow(icon: "4.circle.fill", color: .blue,
+                                text: "Providers #2+ form the fallback chain")
+                        InfoRow(icon: "5.circle.fill", color: .green,
+                                text: "OpenClaw talks directly to providers — fast and native")
                     }
                     .padding(.vertical, 4)
                 }
@@ -466,43 +437,56 @@ private struct SyncedProviderRow: View {
     let rank: Int
     let isFirst: Bool
 
+    private var roleLabel: String {
+        isFirst ? "PRIMARY" : "FALLBACK #\(rank - 1)"
+    }
+
+    private var roleColor: Color {
+        isFirst ? .green : .secondary
+    }
+
+    private var displayModel: String {
+        if let selected = policy.selectedModel, !selected.isEmpty {
+            return selected
+        }
+        return policy.scope
+    }
+
     var body: some View {
         HStack(spacing: 12) {
-            Text("#\(rank)")
-                .font(.system(.body, design: .rounded, weight: .bold))
-                .foregroundStyle(isFirst ? .green : .secondary)
-                .frame(width: 32, alignment: .trailing)
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isFirst ? .green.opacity(0.15) : Color.secondary.opacity(0.08))
+                    .frame(width: 36, height: 36)
+                Text("#\(rank)")
+                    .font(.system(.body, design: .rounded, weight: .bold))
+                    .foregroundStyle(roleColor)
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(policy.serviceName)
                         .font(.subheadline)
                         .fontWeight(isFirst ? .semibold : .regular)
-                    if isFirst {
-                        Text("primary")
-                            .font(.caption2)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1)
-                            .background(.green.opacity(0.15), in: Capsule())
-                            .foregroundStyle(.green)
-                    }
+                        .lineLimit(1)
+                    Text(roleLabel)
+                        .font(.system(size: 9, weight: .heavy, design: .rounded))
+                        .tracking(0.3)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(roleColor.opacity(0.12), in: Capsule())
+                        .foregroundStyle(roleColor)
                 }
 
-                let defaultModel = ServiceCatalog.modelsForScope(policy.scope).first(where: \.isDefault)
-                if let model = defaultModel {
-                    Text(model.id)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fontDesign(.monospaced)
-                } else {
-                    Text(policy.scope)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fontDesign(.monospaced)
-                }
+                Text(displayModel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fontDesign(.monospaced)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
 
-            Spacer()
+            Spacer(minLength: 4)
 
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
@@ -526,6 +510,7 @@ private struct InfoRow: View {
                 .frame(width: 20)
             Text(text)
                 .font(.subheadline)
+                .lineLimit(2)
         }
     }
 }
@@ -592,6 +577,8 @@ private struct RestoreBackupSheet: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .fontDesign(.monospaced)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
                             }
 
                             Spacer()
@@ -722,6 +709,8 @@ private struct OAuthBackupSheet: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .fontDesign(.monospaced)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
                             }
 
                             Spacer()

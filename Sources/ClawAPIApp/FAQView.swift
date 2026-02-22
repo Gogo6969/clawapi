@@ -162,6 +162,13 @@ struct FAQView: View {
                         }
                     }
 
+                    FAQSection(icon: "folder.badge.questionmark", color: .yellow, title: "Why does ClawAPI ask for Documents folder access?") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("ClawAPI reads OpenClaw's openclaw.json to sync your providers. If that config file contains paths inside ~/Documents (e.g. an OpenClaw plugin installed there), macOS will ask for Documents folder permission.")
+                            Text("ClawAPI does **not** read, write, or modify anything in your Documents folder. It only reads the config file at ~/.openclaw/openclaw.json. You can safely allow or deny this — ClawAPI works either way.")
+                        }
+                    }
+
                     Divider()
 
                     // ── Website & Contact ──
