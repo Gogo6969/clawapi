@@ -1,8 +1,8 @@
 {
-  "version": "1.8.8",
+  "version": "1.8.9",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "• Model changes now sync to Telegram/channel sessions automatically\n• Updated \"Model Updated\" info sheet with clearer instructions\n• Active conversations keep their model — only /new picks up the change",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.8/ClawAPI.zip",
-  "sha256": "e3600377a6ba07b544ec2a3cd4d33c1ea2b1c9e538f42764127f5e02de3dd21c"
+  "releaseNotes": "• Fixed health checks: Check All now reliably verifies all providers\n• Blue dot for OAuth providers (connected, credits not verified)\n• Last 4 characters of API keys shown for easy identification\n• Instant tooltips on health dots (no more 2-second delay)\n• Fixed OAuth providers incorrectly classified as local",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.9/ClawAPI.zip",
+  "sha256": "29065ef844cba961c48cb6a250b44500b881cf90ce80c7df86368c77f994e5e4"
 }

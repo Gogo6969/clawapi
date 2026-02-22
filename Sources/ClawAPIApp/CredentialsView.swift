@@ -382,6 +382,7 @@ struct ScopePolicyRow: View {
     var onDelete: () -> Void
     var onModelSwitch: () -> Void = {}
     @State private var showAdminKeySheet = false
+    @State private var isHoveringHealthDot = false
     /// Bumped when the model catalog loads asynchronously, forcing a re-render.
     @State private var catalogGeneration = 0
 
@@ -526,9 +527,13 @@ struct ScopePolicyRow: View {
 
             VStack(alignment: .trailing, spacing: 2) {
                 if policy.hasSecret {
-                    Label("Secret stored", systemImage: "lock.fill")
+                    Label(keySuffix, systemImage: "lock.fill")
                         .font(.caption)
                         .foregroundStyle(.green)
+                } else if isOAuthProvider {
+                    Label("OAuth", systemImage: "person.badge.key")
+                        .font(.caption)
+                        .foregroundStyle(.blue)
                 } else if isLocalProvider {
                     Label("Local", systemImage: "desktopcomputer")
                         .font(.caption)
@@ -559,8 +564,8 @@ struct ScopePolicyRow: View {
             .buttonStyle(.borderedProminent)
             .tint(policy.isEnabled ? .green : .red)
             .controlSize(.small)
-            .disabled(!policy.hasSecret && !isLocalProvider)
-            .help(!policy.hasSecret && !isLocalProvider
+            .disabled(!policy.hasSecret && !isLocalProvider && !isOAuthProvider)
+            .help(!policy.hasSecret && !isLocalProvider && !isOAuthProvider
                 ? "No secret stored — add an API key before enabling"
                 : policy.isEnabled
                     ? "Disable this provider — OpenClaw won't be able to use it"
@@ -616,8 +621,27 @@ struct ScopePolicyRow: View {
     }
 
     /// Whether this provider is a local provider that doesn't need an API key (e.g. Ollama).
+    /// OAuth providers also have requiresKey=false but are NOT local — check authMethod.
     private var isLocalProvider: Bool {
-        !(ServiceCatalog.find(policy.scope)?.requiresKey ?? true)
+        guard let template = ServiceCatalog.find(policy.scope) else { return false }
+        if case .oauth = template.authMethod { return false }
+        return !template.requiresKey
+    }
+
+    /// Whether this provider uses OAuth authentication.
+    private var isOAuthProvider: Bool {
+        guard let template = ServiceCatalog.find(policy.scope) else { return false }
+        if case .oauth = template.authMethod { return true }
+        return false
+    }
+
+    /// Last 4 characters of the stored API key (e.g. "···a1b2").
+    private var keySuffix: String {
+        guard let key = try? store.keychain.retrieveString(forScope: policy.scope) else {
+            return "Key stored"
+        }
+        let suffix = String(key.suffix(4))
+        return "···\(suffix)"
     }
 
     // MARK: - Model helpers
@@ -657,37 +681,59 @@ struct ScopePolicyRow: View {
         store.healthStatus[policy.scope] ?? .unknown
     }
 
+    private var healthDotTooltip: String? {
+        switch health {
+        case .unknown:
+            if policy.isEnabled && (policy.hasSecret || isLocalProvider || isOAuthProvider) {
+                return "Not yet verified — use the ♥ Check All button in the search bar above, or make a request through this provider"
+            }
+            return nil
+        case .checking:
+            return "Checking..."
+        case .healthy:
+            return isOAuthProvider
+                ? "OAuth connected — token managed by OpenClaw (credits not verified)"
+                : "Provider is working — API key is valid"
+        case .dead(let reason):
+            return reason
+        case .unreachable(let reason):
+            return reason
+        }
+    }
+
     @ViewBuilder
     private var healthDot: some View {
         switch health {
         case .unknown:
-            // Show gray dot for enabled providers that haven't been used yet
-            if policy.isEnabled && (policy.hasSecret || isLocalProvider) {
-                Circle()
-                    .fill(Color.secondary.opacity(0.4))
-                    .frame(width: 8, height: 8)
-                    .help("Not yet verified — use the ♥ Check All button in the search bar above, or make a request through this provider")
+            if policy.isEnabled && (policy.hasSecret || isLocalProvider || isOAuthProvider) {
+                healthDotCircle(color: Color.secondary.opacity(0.4))
             }
         case .checking:
             ProgressView()
                 .controlSize(.mini)
-                .help("Checking...")
         case .healthy:
-            Circle()
-                .fill(.green)
-                .frame(width: 8, height: 8)
-                .help("Provider is working")
-        case .dead(let reason):
-            Circle()
-                .fill(.red)
-                .frame(width: 8, height: 8)
-                .help(reason)
-        case .unreachable(let reason):
-            Circle()
-                .fill(.yellow)
-                .frame(width: 8, height: 8)
-                .help(reason)
+            healthDotCircle(color: isOAuthProvider ? .blue : .green)
+        case .dead:
+            healthDotCircle(color: .red)
+        case .unreachable:
+            healthDotCircle(color: .yellow)
         }
+    }
+
+    private func healthDotCircle(color: Color) -> some View {
+        Circle()
+            .fill(color)
+            .frame(width: 8, height: 8)
+            .onHover { hovering in isHoveringHealthDot = hovering }
+            .popover(isPresented: $isHoveringHealthDot, arrowEdge: .bottom) {
+                if let tip = healthDotTooltip {
+                    Text(tip)
+                        .font(.caption)
+                        .padding(8)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: 260)
+                }
+            }
     }
 
     // MARK: - Visual helpers

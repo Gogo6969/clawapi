@@ -138,6 +138,22 @@ public enum OpenClawConfig {
         return fallbacks
     }
 
+    /// Read an API key from OpenClaw's auth-profiles.json for a given ClawAPI scope.
+    /// Falls back to this when the key isn't in the ClawAPI Keychain (e.g. providers
+    /// configured directly in OpenClaw, like MiniMax).
+    public static func readKeyFromAuthProfiles(scope: String) -> String? {
+        guard let provider = providerForScope(scope) else { return nil }
+        guard let data = readAuthProfiles(),
+              let doc = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let profiles = doc["profiles"] as? [String: Any],
+              let profile = profiles["\(provider):default"] as? [String: Any],
+              profile["type"] as? String == "api_key",
+              let key = profile["key"] as? String else {
+            return nil
+        }
+        return key
+    }
+
     /// Check if OpenClaw config exists (local or remote).
     public static var isInstalled: Bool {
         if connectionSettings.mode == .remote {

@@ -221,6 +221,9 @@ public final class PolicyStore: ObservableObject, Sendable {
     public func checkAllHealth() {
         guard !isCheckingHealth else { return }
         isCheckingHealth = true
+        // Preload all keys in one batch so macOS shows at most ONE Keychain prompt
+        // instead of one per provider (which causes dialogs to pile up or be denied).
+        keychain.preloadAll()
         // Mark all enabled providers as "checking"
         for policy in policies where policy.isEnabled {
             healthStatus[policy.scope] = .checking

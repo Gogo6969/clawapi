@@ -36,7 +36,8 @@ The app is signed with Apple Developer ID and notarized — no Gatekeeper warnin
 - **Secure key vault** — API keys stored in the macOS Keychain with hardware encryption
 - **Sub-model picker** — Browse the full model catalog for each provider
 - **25+ providers** — OpenAI, Anthropic, xAI, Groq, Mistral, Google, Together AI, Venice, Ollama, and more
-- **Provider health checks** — Status dots show dead keys / quota issues, manual "Check All" button
+- **Provider health checks** — Color-coded status dots (green/blue/yellow/red) with instant tooltips, manual "Check All" button (free, zero tokens)
+- **Key identification** — Last 4 characters of each API key shown for easy verification
 - **Auto-sync** — Changes are written directly to OpenClaw's config files automatically
 - **Auto-update** — Built-in update checker fetches new releases from GitHub
 - **Usage dashboard** — Check your credit balance and billing across providers

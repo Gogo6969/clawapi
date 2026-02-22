@@ -26,6 +26,12 @@ public let providerHealthNotification = Notification.Name("com.clawapi.providerH
 /// and supports manual checks via free GET /models endpoints (no tokens consumed).
 public enum ProviderHealthCheck {
 
+    /// Normalize a colon-qualified policy scope (e.g. "openai:completions") to its
+    /// base provider scope ("openai") so it matches ServiceCatalog and check configs.
+    private static func baseScope(_ scope: String) -> String {
+        scope.split(separator: ":").first.map(String.init) ?? scope
+    }
+
     // MARK: - Passive: Derive health from audit log
 
     /// Scan recent audit entries to determine health for all enabled providers.
@@ -70,24 +76,34 @@ public enum ProviderHealthCheck {
     /// Does NOT consume any tokens. Only verifies the API key is valid.
     /// For local providers, checks if the server is reachable.
     public static func manualCheck(scope: String, keychain: KeychainService) async -> ProviderHealth {
-        let template = ServiceCatalog.find(scope)
+        let base = baseScope(scope)
+        let template = ServiceCatalog.find(base)
+
+        // OAuth providers: check if profile exists (must be checked before
+        // the requiresKey gate, since OAuth providers also have requiresKey=false)
+        if let t = template, case .oauth = t.authMethod {
+            return checkOAuth(scope: base)
+        }
 
         // Local providers: just check if the server is reachable
         if let t = template, !t.requiresKey {
-            return await checkLocal(scope: scope)
+            return await checkLocal(scope: base)
         }
 
-        // OAuth providers: check if profile exists
-        if let t = template, case .oauth = t.authMethod {
-            return checkOAuth(scope: scope)
-        }
-
-        // API key providers: retrieve key and hit GET /models
-        guard let key = try? keychain.retrieveString(forScope: scope) else {
+        // API key providers: retrieve key from ClawAPI Keychain or OpenClaw auth-profiles
+        let key: String
+        if let k = try? keychain.retrieveString(forScope: scope) {
+            key = k
+        } else if scope != base, let k = try? keychain.retrieveString(forScope: base) {
+            key = k
+        } else if let k = OpenClawConfig.readKeyFromAuthProfiles(scope: base) {
+            key = k
+        } else {
+            logger.warning("No API key found for \(scope) (checked keychain + auth-profiles)")
             return .dead(reason: "No API key")
         }
 
-        return await checkWithKey(scope: scope, key: key)
+        return await checkWithKey(scope: base, key: key)
     }
 
     /// Manually check all enabled providers concurrently.

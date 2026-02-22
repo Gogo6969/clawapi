@@ -134,6 +134,26 @@ The cheapest way to use AI for coding. Instead of per-token API billing, Codex u
 
 **Limitations:** OAuth covers chat and coding completions only. For vision, image analysis, and embeddings, OpenClaw falls back to the next provider in your priority list. Make sure you have a funded API key provider as a fallback.
 
+### Health Status Dots
+
+Each provider shows a colored dot next to its name:
+
+| Color | Meaning |
+|-------|---------|
+| **Green** | API key is valid (verified via free GET /models — zero tokens consumed) |
+| **Blue** | OAuth connected (profile exists, but credits not verified) |
+| **Yellow** | Unreachable (network error or timeout) |
+| **Red** | Dead (invalid key, payment required, or quota exhausted) |
+| **Gray** | Not yet verified |
+
+Hover over any dot to see a detailed tooltip instantly.
+
+Click **Check All** (blue button in the search bar) to verify all providers at once. This is completely free — no tokens or credits are consumed. For local providers (Ollama, LM Studio), it checks if the server is running. For OAuth providers, it verifies the profile exists (shown as blue dot).
+
+### Key Identification
+
+Each provider with an API key shows the **last 4 characters** of the stored key (e.g., `···a1b2`) next to the lock icon. This lets you verify the correct key is stored without exposing the full key. OAuth providers show "OAuth" and local providers show "Local".
+
 ### Enabling and Disabling
 
 Each provider has an **ENABLED / DISABLED** button on the right:
@@ -370,6 +390,14 @@ ClawAPI looks for `~/.openclaw/openclaw.json`. Make sure OpenClaw is installed a
 ### Provider shows "No secret"
 
 The API key wasn't saved to the Keychain. Edit the provider and re-enter your key. Make sure you click **Save to Keychain** and approve the Keychain prompt.
+
+### Health dot stays gray after Check All
+
+The Keychain access dialog may have been denied or timed out. Restart ClawAPI and try again, clicking **Always Allow** on the Keychain prompt. You can verify the stored key by checking the last 4 characters shown next to the lock icon (e.g., `···a1b2`).
+
+### Health dot is red — "Invalid API key"
+
+The stored key was rejected by the provider. Check the last 4 characters to verify it matches your expected key, then re-enter a valid key if needed. You can get new API keys from each provider's dashboard (e.g., [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) for Anthropic).
 
 ---
 
