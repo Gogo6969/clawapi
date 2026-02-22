@@ -1,8 +1,8 @@
 {
-  "version": "1.8.5",
+  "version": "1.8.6",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "Sync Tab Redesign & Bug Fix\n• Redesigned Sync tab: unified provider list with clear PRIMARY / FALLBACK labels\n• Fixed OAuth providers (like OpenAI Codex) not appearing in Synced Providers list\n• Added FAQ entry for macOS Documents folder permission prompt\n• Updated in-app FAQ with OAuth provider info and fallback chain details",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.5/ClawAPI.zip",
-  "sha256": "a38afb32bb5b089de3fd4969507ddde1f59a633734794ee931aa72fbe1fda589"
+  "releaseNotes": "New Providers & Health Checks\n• Added 8 new providers: Together AI, Venice AI, Qwen (Alibaba), Volcengine (Doubao), BytePlus, Qianfan (Baidu), Xiaomi (MiMo), LiteLLM\n• Provider health status dots: green (working), yellow (unreachable), red (dead key/quota), gray (not yet verified)\n• \"Check All\" button verifies all API keys using free endpoints (zero token cost)\n• Health tracked passively from real proxy traffic — no extra API calls\n• Updated FAQ with health dot explanation",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.6/ClawAPI.zip",
+  "sha256": "7585cd0e130ea3639970d5781b9b707af884fada81a986a0dc6714a18b7e300f"
 }

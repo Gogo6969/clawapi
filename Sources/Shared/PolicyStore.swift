@@ -10,11 +10,16 @@ public final class PolicyStore: ObservableObject, Sendable {
     @Published public var pendingRequests: [PendingRequest] = []
     /// The most recent sync error message, or nil if no error. Auto-clears after 10 seconds.
     @Published public var syncError: String?
+    /// Health status per provider scope. Updated by checkAllHealth().
+    @Published public var healthStatus: [String: ProviderHealth] = [:]
+    /// Whether a health check is currently running.
+    @Published public var isCheckingHealth = false
 
     private let policiesURL: URL
     private let auditURL: URL
     private let pendingURL: URL
     private var syncErrorObserver: Any?
+    private var healthObserver: Any?
 
     /// Keychain for syncing to OpenClaw on save.
     public let keychain = KeychainService()
@@ -75,6 +80,25 @@ public final class PolicyStore: ObservableObject, Sendable {
         } else {
             // Lightweight sync: only update model priority in openclaw.json
             OpenClawConfig.syncModelOnly(policies: policies)
+        }
+
+        // Derive initial health from audit log (passive — no API calls)
+        let scopes = policies.filter(\.isEnabled).map(\.scope)
+        healthStatus = ProviderHealthCheck.deriveFromAuditLog(entries: auditEntries, scopes: scopes)
+
+        // Listen for real-time health updates from the daemon proxy
+        healthObserver = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name(providerHealthNotification.rawValue),
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let info = notification.userInfo,
+                  let scope = info["scope"] as? String,
+                  let statusCode = info["statusCode"] as? Int else { return }
+            Task { @MainActor [weak self] in
+                let health = ProviderHealthCheck.classifyStatusCode(statusCode, body: nil)
+                self?.healthStatus[scope] = health
+            }
         }
     }
 
@@ -191,10 +215,41 @@ public final class PolicyStore: ObservableObject, Sendable {
         save()
     }
 
+    // MARK: - Health Checks
+
+    /// Manually check all enabled providers using free GET /models endpoints (no tokens consumed).
+    public func checkAllHealth() {
+        guard !isCheckingHealth else { return }
+        isCheckingHealth = true
+        // Mark all enabled providers as "checking"
+        for policy in policies where policy.isEnabled {
+            healthStatus[policy.scope] = .checking
+        }
+        Task {
+            let results = await ProviderHealthCheck.manualCheckAll(policies: policies, keychain: keychain)
+            await MainActor.run {
+                for (scope, health) in results {
+                    self.healthStatus[scope] = health
+                }
+                self.isCheckingHealth = false
+            }
+        }
+    }
+
+    /// Update health status when a new audit entry shows a proxy result.
+    private func updateHealthFromAudit(_ entry: AuditEntry) {
+        guard let detail = entry.detail, detail.contains("Proxied"),
+              let arrowRange = detail.range(of: "→ ") else { return }
+        let statusStr = String(detail[arrowRange.upperBound...]).trimmingCharacters(in: .whitespaces)
+        guard let statusCode = Int(statusStr) else { return }
+        healthStatus[entry.scope] = ProviderHealthCheck.classifyStatusCode(statusCode, body: nil)
+    }
+
     // MARK: - Audit
 
     public func addAuditEntry(_ entry: AuditEntry) {
         auditEntries.insert(entry, at: 0)
+        updateHealthFromAudit(entry)
         save()
     }
 

@@ -6,7 +6,7 @@
 <p align="center"><strong>Model Switcher & Key Vault for OpenClaw</strong></p>
 <p align="center">
 A native macOS app that lets you switch AI models and securely manage API keys for <a href="https://openclaw.app">OpenClaw</a>.<br>
-Supports OpenAI, Anthropic, Google, xAI, Groq, Mistral, Ollama, and 15+ more providers.<br>
+Supports OpenAI, Anthropic, Google, xAI, Groq, Mistral, Ollama, and 25+ more providers.<br>
 All keys stored in the macOS Keychain — never on disk.
 </p>
 
@@ -35,7 +35,8 @@ The app is signed with Apple Developer ID and notarized — no Gatekeeper warnin
 - **One-click model switching** — Pick any model from any provider and apply it instantly
 - **Secure key vault** — API keys stored in the macOS Keychain with hardware encryption
 - **Sub-model picker** — Browse the full model catalog for each provider
-- **15+ providers** — OpenAI, Anthropic, xAI, Groq, Mistral, Google, Ollama, and more
+- **25+ providers** — OpenAI, Anthropic, xAI, Groq, Mistral, Google, Together AI, Venice, Ollama, and more
+- **Provider health checks** — Status dots show dead keys / quota issues, manual "Check All" button
 - **Auto-sync** — Changes are written directly to OpenClaw's config files automatically
 - **Auto-update** — Built-in update checker fetches new releases from GitHub
 - **Usage dashboard** — Check your credit balance and billing across providers
@@ -100,8 +101,17 @@ When you switch models, a popup reminds you to start a new session in OpenClaw b
 | OpenCode Zen | | |
 | Vercel AI | | |
 | HuggingFace | `hf_...` | Open-source models |
+| Together AI | | Kimi K2.5, Llama, Qwen, etc. |
+| Venice AI | | Privacy-focused AI |
+| Qwen (Alibaba) | | Qwen coding models |
+| Volcengine (Doubao) | | ByteDance's Doubao models |
+| BytePlus | | ByteDance international |
+| Qianfan (Baidu) | | DeepSeek, ERNIE models |
+| Xiaomi (MiMo) | | MiMo coding models |
+| LiteLLM | | Self-hosted proxy |
 | OpenAI Codex | *OAuth (no key)* | GPT-5.3 Codex — uses ChatGPT Plus ($20/mo), cheapest option |
 | Ollama | *No key needed* | Local models (Llama, Mistral, etc.) |
+| LM Studio | *No key needed* | Local GGUF models |
 | Custom | *Any* | Add your own provider |
 
 ## Tabs

@@ -162,10 +162,32 @@ struct FAQView: View {
                         }
                     }
 
-                    FAQSection(icon: "folder.badge.questionmark", color: .yellow, title: "Why does ClawAPI ask for Documents folder access?") {
+                    FAQSection(icon: "heart.text.clipboard", color: .green, title: "What do the colored dots mean?") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("The dots next to each provider name show its health status:")
+                            HStack(spacing: 6) {
+                                Circle().fill(.green).frame(width: 8, height: 8)
+                                Text("**Green** — Provider is working. Your key was accepted during real usage.")
+                            }
+                            HStack(spacing: 6) {
+                                Circle().fill(.yellow).frame(width: 8, height: 8)
+                                Text("**Yellow** — Unreachable. Network error or timeout.")
+                            }
+                            HStack(spacing: 6) {
+                                Circle().fill(.red).frame(width: 8, height: 8)
+                                Text("**Red** — Dead. Invalid key, expired, or quota exhausted.")
+                            }
+                            Text("Health is tracked passively from real usage — no extra API calls, zero token cost. Providers with no dot have not been used yet.")
+                            Text("Click **Check All** in the search bar to manually verify all keys using free endpoints (no tokens consumed).")
+                        }
+                    }
+
+                    Divider()
+
+                    FAQSection(icon: "folder.badge.questionmark", color: .yellow, title: "Why does macOS ask for folder access?") {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("ClawAPI reads OpenClaw's openclaw.json to sync your providers. If that config file contains paths inside ~/Documents (e.g. an OpenClaw plugin installed there), macOS will ask for Documents folder permission.")
-                            Text("ClawAPI does **not** read, write, or modify anything in your Documents folder. It only reads the config file at ~/.openclaw/openclaw.json. You can safely allow or deny this — ClawAPI works either way.")
+                            Text("macOS may prompt for folder access (e.g. Documents) when ClawAPI reads OpenClaw's config files. ClawAPI does **not** read, write, or modify anything outside of ~/.openclaw/ and ~/Library/Application Support/ClawAPI/.")
+                            Text("You can safely allow or deny — ClawAPI works either way. The prompt only appears once per location.")
                         }
                     }
 

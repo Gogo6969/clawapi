@@ -85,7 +85,7 @@ The Providers tab is the main screen. It shows all your connected providers as a
 
 Click the `+` button in the toolbar to open the Add Provider wizard:
 
-1. **Pick a Service** — Search or scroll through 15+ providers. Select one, or choose "Custom" for unlisted providers.
+1. **Pick a Service** — Search or scroll through 25+ providers. Select one, or choose "Custom" for unlisted providers.
 2. **Enter Your Key** — Paste your API key. The placeholder text shows the expected format (e.g., `sk-...` for OpenAI). You can toggle visibility with the eye icon.
 3. **Advanced Settings** (optional):
    - **Connection ID** — Custom scope name (usually auto-filled)

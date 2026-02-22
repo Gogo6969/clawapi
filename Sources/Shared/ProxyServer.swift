@@ -392,6 +392,21 @@ public final class ProxyServer: Sendable {
             await auditLogger.log(entry)
             await MainActor.run { store.addAuditEntry(entry) }
 
+            // Post health notification so the app can update status dots in real-time
+            let health = ProviderHealthCheck.classifyStatusCode(httpResponse.statusCode, body: responseBody)
+            if health != .healthy {
+                DistributedNotificationCenter.default().postNotificationName(
+                    NSNotification.Name(providerHealthNotification.rawValue),
+                    object: nil,
+                    userInfo: [
+                        "scope": request.scope,
+                        "statusCode": httpResponse.statusCode,
+                        "detail": "\(health)",
+                    ],
+                    deliverImmediately: true
+                )
+            }
+
             logger.info("Proxied \(request.method) \(request.url) → \(httpResponse.statusCode) for scope '\(request.scope)'")
 
             return ProxyResponse(

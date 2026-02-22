@@ -176,7 +176,7 @@ struct CredentialsView: View {
 
             Divider()
 
-            // Search bar
+            // Search bar + Check All
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
@@ -193,6 +193,27 @@ struct CredentialsView: View {
                     .buttonStyle(.plain)
                     .help("Clear search filter")
                 }
+
+                Divider().frame(height: 16)
+
+                Button {
+                    store.checkAllHealth()
+                } label: {
+                    HStack(spacing: 4) {
+                        if store.isCheckingHealth {
+                            ProgressView()
+                                .controlSize(.mini)
+                        } else {
+                            Image(systemName: "heart.text.clipboard")
+                        }
+                        Text("Check All")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .disabled(store.isCheckingHealth)
+                .help("Check all providers for valid API keys (free — no tokens used)")
             }
             .padding(8)
             .background(.background.secondary)
@@ -429,9 +450,10 @@ struct ScopePolicyRow: View {
                 .background(statusColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 2) {
-                HStack {
+                HStack(spacing: 6) {
                     Text(policy.serviceName)
                         .font(.headline)
+                    healthDot
                     Text(policy.scope)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -620,6 +642,45 @@ struct ScopePolicyRow: View {
             return String(id[id.index(after: slash)...])
         }
         return id
+    }
+
+    // MARK: - Health dot
+
+    private var health: ProviderHealth {
+        store.healthStatus[policy.scope] ?? .unknown
+    }
+
+    @ViewBuilder
+    private var healthDot: some View {
+        switch health {
+        case .unknown:
+            // Show gray dot for enabled providers that haven't been used yet
+            if policy.isEnabled && (policy.hasSecret || isLocalProvider) {
+                Circle()
+                    .fill(Color.secondary.opacity(0.4))
+                    .frame(width: 8, height: 8)
+                    .help("Not yet verified — click Check All or use this provider")
+            }
+        case .checking:
+            ProgressView()
+                .controlSize(.mini)
+                .help("Checking...")
+        case .healthy:
+            Circle()
+                .fill(.green)
+                .frame(width: 8, height: 8)
+                .help("Provider is working")
+        case .dead(let reason):
+            Circle()
+                .fill(.red)
+                .frame(width: 8, height: 8)
+                .help(reason)
+        case .unreachable(let reason):
+            Circle()
+                .fill(.yellow)
+                .frame(width: 8, height: 8)
+                .help(reason)
+        }
     }
 
     // MARK: - Visual helpers

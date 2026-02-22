@@ -184,6 +184,80 @@ public enum ServiceCatalog {
             suggestedTags: ["research", "images"],
             keyPlaceholder: "hf_..."
         ),
+        ServiceTemplate(
+            name: "Together AI",
+            scope: "together",
+            domains: ["api.together.xyz"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Venice AI",
+            scope: "venice",
+            domains: ["api.venice.ai"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["chat", "coding"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Qwen (Alibaba)",
+            scope: "qwen-portal",
+            domains: ["portal.qwen.ai"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Volcengine (Doubao)",
+            scope: "volcengine",
+            domains: ["ark.cn-beijing.volces.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "BytePlus",
+            scope: "byteplus",
+            domains: ["ark.ap-southeast.bytepluses.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Qianfan (Baidu)",
+            scope: "qianfan",
+            domains: ["qianfan.baidubce.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Xiaomi (MiMo)",
+            scope: "xiaomi",
+            domains: ["api.xiaomimimo.com"],
+            credentialType: .customHeader,
+            customHeaderName: "x-api-key",
+            suggestedTags: ["coding"],
+            keyPlaceholder: "API key"
+        ),
+
+        // ── Self-Hosted / Proxy Providers ──
+        ServiceTemplate(
+            name: "LiteLLM",
+            scope: "litellm",
+            domains: ["localhost"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "API key"
+        ),
 
         // ── OAuth Providers ──
         ServiceTemplate(
@@ -251,6 +325,14 @@ public enum ServiceCatalog {
         "ollama": "ollama",
         "lmstudio": "lmstudio",
         "openai-codex": "openai-codex",
+        "together": "together",
+        "venice": "venice",
+        "qwen-portal": "qwen-portal",
+        "volcengine": "volcengine",
+        "byteplus": "byteplus",
+        "qianfan": "qianfan",
+        "xiaomi": "xiaomi",
+        "litellm": "litellm",
         "claude": "anthropic",  // Legacy alias — some policies use "claude" instead of "anthropic"
     ]
 

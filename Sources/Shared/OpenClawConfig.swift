@@ -319,6 +319,14 @@ public enum OpenClawConfig {
         "ollama": "ollama",
         "lmstudio": "lmstudio",
         "openai-codex": "openai-codex",
+        "together": "together",
+        "venice": "venice",
+        "qwen-portal": "qwen-portal",
+        "volcengine": "volcengine",
+        "byteplus": "byteplus",
+        "qianfan": "qianfan",
+        "xiaomi": "xiaomi",
+        "litellm": "litellm",
     ]
 
     /// Look up the OpenClaw provider for a scope, matching on the base name
@@ -348,6 +356,14 @@ public enum OpenClawConfig {
         "ollama":              ("http://localhost:11434",                   "openai-responses"),
         "lmstudio":            ("http://localhost:1234/v1",                "openai-completions"),
         "openai-codex":        ("https://api.openai.com/v1",              "openai-completions"),
+        "together":            ("https://api.together.xyz/v1",            "openai-completions"),
+        "venice":              ("https://api.venice.ai/api/v1",           "openai-completions"),
+        "qwen-portal":         ("https://portal.qwen.ai/v1",             "openai-completions"),
+        "volcengine":          ("https://ark.cn-beijing.volces.com/api/v3", "openai-completions"),
+        "byteplus":            ("https://ark.ap-southeast.bytepluses.com/api/v3", "openai-completions"),
+        "qianfan":             ("https://qianfan.baidubce.com/v2",        "openai-completions"),
+        "xiaomi":              ("https://api.xiaomimimo.com/anthropic",    "anthropic-messages"),
+        "litellm":             ("http://localhost:4000",                   "openai-completions"),
     ]
 
     /// Map ClawAPI scopes to the default model.
@@ -370,6 +386,14 @@ public enum OpenClawConfig {
         "ollama": "ollama/llama3.2:3b",
         "lmstudio": "lmstudio/default",
         "openai-codex": "openai-codex/gpt-5.3-codex",
+        "together": "together/moonshotai/Kimi-K2.5",
+        "venice": "venice/auto",
+        "qwen-portal": "qwen-portal/coder-model",
+        "volcengine": "volcengine/auto",
+        "byteplus": "byteplus/auto",
+        "qianfan": "qianfan/deepseek-v3.2",
+        "xiaomi": "xiaomi/mimo-v2-flash",
+        "litellm": "litellm/claude-opus-4-6",
     ]
 
     /// Whether a scope requires an API key.
