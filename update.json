@@ -4,5 +4,5 @@
   "minimumSystemVersion": "14.0",
   "releaseNotes": "New Providers & Health Checks\n• Added 8 new providers: Together AI, Venice AI, Qwen (Alibaba), Volcengine (Doubao), BytePlus, Qianfan (Baidu), Xiaomi (MiMo), LiteLLM\n• Provider health status dots: green (working), yellow (unreachable), red (dead key/quota), gray (not yet verified)\n• \"Check All\" button verifies all API keys using free endpoints (zero token cost)\n• Health tracked passively from real proxy traffic — no extra API calls\n• Updated FAQ with health dot explanation",
   "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.8.6/ClawAPI.zip",
-  "sha256": "7585cd0e130ea3639970d5781b9b707af884fada81a986a0dc6714a18b7e300f"
+  "sha256": "2834a19f8d0392572646d51335ca8b57809fec970c5b455363dfa50dd8e3443f"
 }
