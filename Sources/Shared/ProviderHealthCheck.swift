@@ -74,12 +74,12 @@ public enum ProviderHealthCheck {
         return results
     }
 
-    // MARK: - Manual: Free endpoint checks (GET /models — no tokens)
+    // MARK: - Key check: Free endpoint (GET /models — no tokens)
 
-    /// Manually check a single provider using a free endpoint (GET /models).
+    /// Check a single provider using a free endpoint (GET /models).
     /// Does NOT consume any tokens. Only verifies the API key is valid.
     /// For local providers, checks if the server is reachable.
-    public static func manualCheck(scope: String, keychain: KeychainService) async -> ProviderHealth {
+    public static func keyCheck(scope: String, keychain: KeychainService) async -> ProviderHealth {
         let base = baseScope(scope)
         let template = ServiceCatalog.find(base)
 
@@ -95,28 +95,21 @@ public enum ProviderHealthCheck {
         }
 
         // API key providers: retrieve key from ClawAPI Keychain or OpenClaw auth-profiles
-        let key: String
-        if let k = try? keychain.retrieveString(forScope: scope) {
-            key = k
-        } else if scope != base, let k = try? keychain.retrieveString(forScope: base) {
-            key = k
-        } else if let k = OpenClawConfig.readKeyFromAuthProfiles(scope: base) {
-            key = k
-        } else {
-            logger.warning("No API key found for \(scope) (checked keychain + auth-profiles)")
+        guard let key = resolveKey(scope: scope, base: base, keychain: keychain) else {
             return .dead(reason: "No API key")
         }
 
         return await checkWithKey(scope: base, key: key)
     }
 
-    /// Manually check all enabled providers concurrently.
-    public static func manualCheckAll(policies: [ScopePolicy], keychain: KeychainService) async -> [String: ProviderHealth] {
+    /// Check all enabled providers' keys concurrently (free, no tokens).
+    /// Use this on app launch for automatic key validation.
+    public static func keyCheckAll(policies: [ScopePolicy], keychain: KeychainService) async -> [String: ProviderHealth] {
         let enabled = policies.filter { $0.isEnabled }
         return await withTaskGroup(of: (String, ProviderHealth).self) { group in
             for policy in enabled {
                 group.addTask {
-                    let health = await manualCheck(scope: policy.scope, keychain: keychain)
+                    let health = await keyCheck(scope: policy.scope, keychain: keychain)
                     return (policy.scope, health)
                 }
             }
@@ -126,6 +119,94 @@ public enum ProviderHealthCheck {
             }
             return results
         }
+    }
+
+    // MARK: - Deep check: Completions probe (1 token, verifies credits)
+
+    /// Full health check: key validation + 1-token completions probe.
+    /// The deep probe verifies the provider actually works (credits, service availability).
+    /// Uses the user's selected model to guarantee the model exists on the provider.
+    /// Returns a tuple: (keyHealth, deepHealth). deepHealth is nil if deep check
+    /// is not supported for this provider or the key check already failed.
+    public static func fullCheck(policy: ScopePolicy, keychain: KeychainService) async -> (key: ProviderHealth, deep: ProviderHealth?) {
+        let scope = policy.scope
+        let base = baseScope(scope)
+        let template = ServiceCatalog.find(base)
+
+        // OAuth: key-only check (can't deep-check OAuth tokens)
+        if let t = template, case .oauth = t.authMethod {
+            return (checkOAuth(scope: base), nil)
+        }
+
+        // Local providers: key-only check (reachability is enough)
+        if let t = template, !t.requiresKey {
+            return (await checkLocal(scope: base), nil)
+        }
+
+        // Resolve API key
+        guard let key = resolveKey(scope: scope, base: base, keychain: keychain) else {
+            return (.dead(reason: "No API key"), nil)
+        }
+
+        // Step 1: Free key check
+        let keyHealth = await checkWithKey(scope: base, key: key)
+
+        // Step 2: Deep probe only if key is valid
+        guard case .healthy = keyHealth else {
+            return (keyHealth, nil)
+        }
+
+        // Use the user's selected model — guaranteed to exist on the provider
+        let modelId = resolveModelId(for: policy)
+        let deepResult = await deepCheck(scope: base, key: key, model: modelId)
+        return (keyHealth, deepResult)
+    }
+
+    /// Full check all enabled providers concurrently.
+    /// Returns separate dictionaries for key health and deep health.
+    public static func fullCheckAll(policies: [ScopePolicy], keychain: KeychainService) async -> (keys: [String: ProviderHealth], deep: [String: ProviderHealth]) {
+        let enabled = policies.filter { $0.isEnabled }
+        return await withTaskGroup(of: (String, ProviderHealth, ProviderHealth?).self) { group in
+            for policy in enabled {
+                group.addTask {
+                    let result = await fullCheck(policy: policy, keychain: keychain)
+                    return (policy.scope, result.key, result.deep)
+                }
+            }
+            var keys: [String: ProviderHealth] = [:]
+            var deep: [String: ProviderHealth] = [:]
+            for await (scope, keyHealth, deepHealth) in group {
+                keys[scope] = keyHealth
+                if let d = deepHealth {
+                    deep[scope] = d
+                }
+            }
+            return (keys, deep)
+        }
+    }
+
+    /// Extract the API model name from a policy's selectedModel (e.g. "openai/gpt-5.1" → "gpt-5.1").
+    private static func resolveModelId(for policy: ScopePolicy) -> String? {
+        guard let selected = policy.selectedModel, !selected.isEmpty else { return nil }
+        // Format: "provider/model-name" — strip provider prefix
+        if let slashIndex = selected.firstIndex(of: "/") {
+            return String(selected[selected.index(after: slashIndex)...])
+        }
+        return selected
+    }
+
+    // MARK: - Private: Resolve API key
+
+    private static func resolveKey(scope: String, base: String, keychain: KeychainService) -> String? {
+        if let k = try? keychain.retrieveString(forScope: scope) {
+            return k
+        } else if scope != base, let k = try? keychain.retrieveString(forScope: base) {
+            return k
+        } else if let k = OpenClawConfig.readKeyFromAuthProfiles(scope: base) {
+            return k
+        }
+        logger.warning("No API key found for \(scope) (checked keychain + auth-profiles)")
+        return nil
     }
 
     // MARK: - Status code classification (shared by proxy + manual check)
@@ -155,6 +236,108 @@ public enum ProviderHealthCheck {
             return .unreachable(reason: "Server error (\(statusCode))")
         default:
             return .unreachable(reason: "HTTP \(statusCode)")
+        }
+    }
+
+    // MARK: - Deep check: minimal completions probe (1 token)
+
+    /// After the free /models check passes, probe the completions endpoint
+    /// with a 1-token request to verify the service actually works.
+    /// Uses the user's selected model. Catches: $0 balance (402), service outages (503),
+    /// quota exhausted (429). Cost: ~0.001 cents per check — negligible.
+    private static func deepCheck(scope: String, key: String, model: String?) async -> ProviderHealth? {
+        guard let model else { return nil }
+
+        // Skip providers where deep check doesn't apply
+        if scope == "google-ai" || scope == "ollama" || scope == "lmstudio" || scope == "litellm" {
+            return nil
+        }
+
+        // Build the completions URL and auth from the provider's check config
+        let checkConfig = providerCheckConfig(scope: scope)
+        let completionsURL: String
+        let authStyle: AuthStyle
+        let extraHeaders: [(String, String)]
+
+        switch scope {
+        case "anthropic", "claude":
+            completionsURL = "https://api.anthropic.com/v1/messages"
+            authStyle = .customHeader("x-api-key")
+            extraHeaders = [("anthropic-version", "2023-06-01")]
+        default:
+            // Derive completions URL from the models URL
+            completionsURL = checkConfig.url
+                .replacingOccurrences(of: "/v1/models", with: "/v1/chat/completions")
+                .replacingOccurrences(of: "/v1beta/models", with: "/v1beta/chat/completions")
+                .replacingOccurrences(of: "/v2/models", with: "/v2/chat/completions")
+                .replacingOccurrences(of: "/v3/models", with: "/v3/chat/completions")
+                .replacingOccurrences(of: "/api/v1/auth/key", with: "/api/v1/chat/completions")
+            authStyle = checkConfig.authStyle
+            extraHeaders = checkConfig.extraHeaders
+        }
+
+        guard let url = URL(string: completionsURL) else { return nil }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        switch authStyle {
+        case .bearer:
+            request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        case .customHeader(let name):
+            request.setValue(key, forHTTPHeaderField: name)
+        }
+
+        for (header, value) in extraHeaders {
+            request.setValue(value, forHTTPHeaderField: header)
+        }
+
+        // Minimal request body — 1 token response
+        let body: [String: Any] = [
+            "model": model,
+            "messages": [["role": "user", "content": "1"]],
+            "max_tokens": 1
+        ]
+
+        guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else { return nil }
+        request.httpBody = bodyData
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                return .unreachable(reason: "Invalid response")
+            }
+
+            let responseBody = String(data: data, encoding: .utf8)
+            logger.info("Deep check \(scope) model=\(model): HTTP \(http.statusCode)")
+
+            switch http.statusCode {
+            case 200...299:
+                return .healthy
+            case 402:
+                return .dead(reason: "No credits — payment required")
+            case 429:
+                let lower = responseBody?.lowercased() ?? ""
+                if lower.contains("quota") || lower.contains("exceeded") || lower.contains("insufficient")
+                    || lower.contains("billing") || lower.contains("limit reached") {
+                    return .dead(reason: "Quota exhausted — no credits")
+                }
+                // Rate limited but key works — still healthy
+                return .healthy
+            case 503:
+                return .unreachable(reason: "Service temporarily unavailable")
+            case 500...599:
+                return .unreachable(reason: "Server error (\(http.statusCode))")
+            default:
+                // For other errors, fall back to the models-check result (key valid)
+                logger.info("Deep check \(scope): unexpected HTTP \(http.statusCode) — \(responseBody ?? "")")
+                return nil
+            }
+        } catch {
+            logger.warning("Deep check network error for \(scope): \(error.localizedDescription)")
+            return nil
         }
     }
 

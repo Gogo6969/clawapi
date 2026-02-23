@@ -36,36 +36,35 @@ private struct WelcomePage1: View {
     var onNext: () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                Spacer().frame(height: 48)
+        VStack(spacing: 0) {
+            Spacer()
 
-                // Hero
-                VStack(spacing: 16) {
-                    Image(systemName: "shield.lefthalf.filled.badge.checkmark")
-                        .font(.system(size: 72))
-                        .foregroundStyle(Color(red: 0.91, green: 0.22, blue: 0.22))
-                        .symbolRenderingMode(.hierarchical)
+            // Hero
+            VStack(spacing: 12) {
+                Image(systemName: "shield.lefthalf.filled.badge.checkmark")
+                    .font(.system(size: 64))
+                    .foregroundStyle(Color(red: 0.91, green: 0.22, blue: 0.22))
+                    .symbolRenderingMode(.hierarchical)
 
-                    Text("ClawAPI")
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                Text("ClawAPI")
+                    .font(.system(size: 38, weight: .bold, design: .rounded))
 
-                    Text("Model Switcher & Key Vault for OpenClaw")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+                Text("Model Switcher & Key Vault for OpenClaw")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
 
-                    Text("Pick your AI models, save money by switching to cheaper ones when you can, and keep your API keys safe in the macOS Keychain.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 560)
-                }
+                Text("Pick your AI models, save money by switching to cheaper ones when you can, and keep your API keys safe in the macOS Keychain.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 560)
+            }
 
-                Spacer().frame(height: 40)
+            Spacer().frame(height: 28)
 
-                // Feature cards
-                VStack(alignment: .leading, spacing: 20) {
+            // Feature cards
+            VStack(alignment: .leading, spacing: 16) {
                     FeatureRow(
                         icon: "cpu.fill",
                         color: .blue,
@@ -93,7 +92,7 @@ private struct WelcomePage1: View {
                 }
                 .frame(maxWidth: 560)
 
-                Spacer().frame(height: 44)
+                Spacer().frame(height: 32)
 
                 // Next button
                 Button {
@@ -109,7 +108,7 @@ private struct WelcomePage1: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
 
-                Spacer().frame(height: 24)
+                Spacer().frame(height: 16)
 
                 // Disclaimer
                 Text("ClawAPI is provided as-is, without warranty of any kind. You are solely responsible for the credentials you store and the providers you connect. Use at your own risk.")
@@ -118,10 +117,9 @@ private struct WelcomePage1: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 480)
 
-                Spacer().frame(height: 32)
+                Spacer()
             }
             .frame(maxWidth: .infinity)
-        }
     }
 }
 

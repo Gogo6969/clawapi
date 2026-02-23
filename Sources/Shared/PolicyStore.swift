@@ -10,7 +10,7 @@ public final class PolicyStore: ObservableObject, Sendable {
     @Published public var pendingRequests: [PendingRequest] = []
     /// The most recent sync error message, or nil if no error. Auto-clears after 10 seconds.
     @Published public var syncError: String?
-    /// Health status per provider scope. Updated by checkAllHealth().
+    /// Health status per provider scope. Updated by checkAllKeys() on launch and checkAllHealth().
     @Published public var healthStatus: [String: ProviderHealth] = [:]
     /// Whether a health check is currently running.
     @Published public var isCheckingHealth = false
@@ -269,19 +269,36 @@ public final class PolicyStore: ObservableObject, Sendable {
 
     // MARK: - Health Checks
 
-    /// Manually check all enabled providers using free GET /models endpoints (no tokens consumed).
-    public func checkAllHealth() {
+    /// Check all API keys on launch (silent, no activity log).
+    public func checkAllKeys() {
         guard !isCheckingHealth else { return }
         isCheckingHealth = true
-        // Preload all keys in one batch so macOS shows at most ONE Keychain prompt
-        // instead of one per provider (which causes dialogs to pile up or be denied).
         keychain.preloadAll()
-        // Mark all enabled providers as "checking"
         for policy in policies where policy.isEnabled {
             healthStatus[policy.scope] = .checking
         }
         Task {
-            let results = await ProviderHealthCheck.manualCheckAll(policies: policies, keychain: keychain)
+            let results = await ProviderHealthCheck.keyCheckAll(policies: policies, keychain: keychain)
+            await MainActor.run {
+                for (scope, health) in results {
+                    self.healthStatus[scope] = health
+                }
+                self.isCheckingHealth = false
+            }
+        }
+    }
+
+    /// Check all API keys and log results to Activity.
+    /// Called when user clicks "Check All".
+    public func checkAllHealth() {
+        guard !isCheckingHealth else { return }
+        isCheckingHealth = true
+        keychain.preloadAll()
+        for policy in policies where policy.isEnabled {
+            healthStatus[policy.scope] = .checking
+        }
+        Task {
+            let results = await ProviderHealthCheck.keyCheckAll(policies: policies, keychain: keychain)
             await MainActor.run {
                 for (scope, health) in results {
                     self.healthStatus[scope] = health
@@ -295,7 +312,7 @@ public final class PolicyStore: ObservableObject, Sendable {
                     let detail: String
                     switch health {
                     case .healthy:
-                        result = .approved; detail = "Healthy"
+                        result = .approved; detail = "Key valid"
                     case .dead(let reason):
                         result = .error; detail = reason
                     case .unreachable(let reason):

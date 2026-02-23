@@ -461,9 +461,6 @@ struct ScopePolicyRow: View {
                     Text(policy.serviceName)
                         .font(.headline)
                     healthDot
-                    Text(policy.scope)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
                 }
                 HStack(spacing: 8) {
                     // Model picker
@@ -487,8 +484,8 @@ struct ScopePolicyRow: View {
                                 EmptyView()
                             }
                             .pickerStyle(.menu)
-                            .fixedSize()
                         }
+                        .frame(width: 220, alignment: .leading)
                     }
 
                     if policy.isEnabled {
@@ -676,6 +673,8 @@ struct ScopePolicyRow: View {
 
     // MARK: - Health dot
 
+    // MARK: - Key health dot (auto-checked on launch, free)
+
     private var health: ProviderHealth {
         store.healthStatus[policy.scope] ?? .unknown
     }
@@ -684,15 +683,15 @@ struct ScopePolicyRow: View {
         switch health {
         case .unknown:
             if policy.isEnabled && (policy.hasSecret || isLocalProvider || isOAuthProvider) {
-                return "Not yet verified — use the ♥ Check All button in the search bar above, or make a request through this provider"
+                return "Not yet verified — click Check All to verify"
             }
             return nil
         case .checking:
             return "Checking..."
         case .healthy:
             return isOAuthProvider
-                ? "OAuth connected — token managed by OpenClaw (credits not verified)"
-                : "Provider is working — API key is valid"
+                ? "OAuth connected — token managed by OpenClaw"
+                : "API key is valid"
         case .dead(let reason):
             return reason
         case .unreachable(let reason):

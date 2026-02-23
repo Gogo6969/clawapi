@@ -161,10 +161,10 @@ struct FAQView: View {
 
                     FAQSection(icon: "heart.text.clipboard", color: .green, title: "What do the colored dots mean?") {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("The dots next to each provider name show its health status:")
+                            Text("The dot next to each provider name shows its key status:")
                             HStack(spacing: 6) {
                                 Circle().fill(.green).frame(width: 8, height: 8)
-                                Text("**Green** — Provider is working. Your key was accepted during real usage.")
+                                Text("**Green** — API key is valid.")
                             }
                             HStack(spacing: 6) {
                                 Circle().fill(.yellow).frame(width: 8, height: 8)
@@ -174,8 +174,11 @@ struct FAQView: View {
                                 Circle().fill(.red).frame(width: 8, height: 8)
                                 Text("**Red** — Dead. Invalid key, expired, or quota exhausted.")
                             }
-                            Text("Health is tracked passively from real usage — no extra API calls, zero token cost. Providers with no dot have not been used yet.")
-                            Text("Click **Check All** in the search bar to manually verify all keys using free endpoints (no tokens consumed).")
+                            HStack(spacing: 6) {
+                                Circle().fill(.blue).frame(width: 8, height: 8)
+                                Text("**Blue** — OAuth token present (managed by OpenClaw).")
+                            }
+                            Text("Keys are checked automatically on launch using free endpoints (no tokens consumed). Click **Check All** to re-check anytime.")
                         }
                     }
 

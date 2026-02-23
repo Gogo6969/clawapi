@@ -1,8 +1,8 @@
 {
-  "version": "1.9.0",
+  "version": "1.9.1",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "• Merged Activity & Logs into one tab (hidden when empty)\n• Activity logs provider changes, health checks, and proxy traffic\n• Cross-process sync: daemon activity appears in real-time\n• Batch keychain preload on launch (single prompt instead of per-provider)\n• Cleaned up redundant UI tabs",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.9.0/ClawAPI.zip",
-  "sha256": "0c1dcec63fcfd792d3762ba7cc3ec1ce64288d51930892c5e145f23280fc47ba"
+  "releaseNotes": "• Auto key validation on launch (free, no tokens consumed)\n• Health dots show key status: green=valid, red=dead, yellow=unreachable, blue=OAuth\n• Pre-permission dialog explains folder access before macOS prompt\n• Fixed welcome screen scrollbar issue\n• Consistent model picker width across all providers\n• Removed redundant scope label from provider rows",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.9.1/ClawAPI.zip",
+  "sha256": "223ea50225935814138c9e15ca9c6bd05a1a9d309a3fa1441e381932d5b8c49d"
 }
