@@ -170,7 +170,7 @@ private struct WelcomePage2: View {
             }
             .frame(maxWidth: 480)
 
-            Text("Supports 15+ providers including OpenAI, Anthropic, xAI, Groq, Mistral, and local models like Ollama.")
+            Text("Supports 30+ providers including OpenAI, Anthropic, xAI, Groq, Mistral, and local models like Ollama.")
                 .font(.callout)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)

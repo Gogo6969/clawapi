@@ -38,7 +38,7 @@ struct HelpPopoverView: View {
                     icon: "plus.circle",
                     color: .green,
                     title: "Add Provider (+)",
-                    text: "Connect a new provider. Pick from 15+ AI services or add a custom one."
+                    text: "Connect a new provider. Pick from 30+ AI services or add a custom one."
                 )
                 HelpSection(
                     icon: "bell.badge",

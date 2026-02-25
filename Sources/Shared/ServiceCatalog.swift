@@ -248,7 +248,34 @@ public enum ServiceCatalog {
             keyPlaceholder: "API key"
         ),
 
-        // ── Self-Hosted / Proxy Providers ──
+        // ── Gateway / Proxy Providers ──
+        ServiceTemplate(
+            name: "Kilo Code",
+            scope: "kilocode",
+            domains: ["api.kilo.ai"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Synthetic",
+            scope: "synthetic",
+            domains: ["api.synthetic.new"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "MiniMax (China)",
+            scope: "minimax-cn",
+            domains: ["api.minimaxi.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "API key"
+        ),
         ServiceTemplate(
             name: "LiteLLM",
             scope: "litellm",
@@ -271,11 +298,77 @@ public enum ServiceCatalog {
             requiresKey: false,
             authMethod: .oauth(provider: "openai-codex")
         ),
+        ServiceTemplate(
+            name: "GitHub Copilot (OAuth)",
+            scope: "github-copilot",
+            domains: ["api.individual.githubcopilot.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding"],
+            keyPlaceholder: "",
+            requiresKey: false,
+            authMethod: .oauth(provider: "github-copilot")
+        ),
+        ServiceTemplate(
+            name: "Google Gemini CLI (OAuth)",
+            scope: "google-gemini-cli",
+            domains: ["generativelanguage.googleapis.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding"],
+            keyPlaceholder: "",
+            requiresKey: false,
+            authMethod: .oauth(provider: "google-gemini-cli")
+        ),
+        ServiceTemplate(
+            name: "Chutes (OAuth)",
+            scope: "chutes",
+            domains: ["api.chutes.ai"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "",
+            requiresKey: false,
+            authMethod: .oauth(provider: "chutes")
+        ),
+        ServiceTemplate(
+            name: "Claude CLI (OAuth)",
+            scope: "claude-cli",
+            domains: ["api.anthropic.com"],
+            credentialType: .customHeader,
+            customHeaderName: "x-api-key",
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "",
+            requiresKey: false,
+            authMethod: .oauth(provider: "claude-cli")
+        ),
+        ServiceTemplate(
+            name: "Codex CLI (OAuth)",
+            scope: "codex-cli",
+            domains: ["api.openai.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding"],
+            keyPlaceholder: "",
+            requiresKey: false,
+            authMethod: .oauth(provider: "codex-cli")
+        ),
 
-        // ── Local Providers ──
+        // ── Local / Self-Hosted Providers ──
         ServiceTemplate(
             name: "Ollama",
             scope: "ollama",
+            domains: ["localhost"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat"],
+            keyPlaceholder: "",
+            requiresKey: false,
+            authMethod: .none
+        ),
+        ServiceTemplate(
+            name: "vLLM",
+            scope: "vllm",
             domains: ["localhost"],
             credentialType: .bearerToken,
             customHeaderName: nil,
@@ -333,6 +426,15 @@ public enum ServiceCatalog {
         "qianfan": "qianfan",
         "xiaomi": "xiaomi",
         "litellm": "litellm",
+        "kilocode": "kilocode",
+        "synthetic": "synthetic",
+        "minimax-cn": "minimax-cn",
+        "github-copilot": "github-copilot",
+        "google-gemini-cli": "google-gemini-cli",
+        "chutes": "chutes",
+        "claude-cli": "claude-cli",
+        "codex-cli": "codex-cli",
+        "vllm": "vllm",
         "claude": "anthropic",  // Legacy alias — some policies use "claude" instead of "anthropic"
     ]
 

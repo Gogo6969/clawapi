@@ -1,8 +1,8 @@
 {
-  "version": "1.9.1",
+  "version": "1.9.2",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "• Auto key validation on launch (free, no tokens consumed)\n• Health dots show key status: green=valid, red=dead, yellow=unreachable, blue=OAuth\n• Pre-permission dialog explains folder access before macOS prompt\n• Fixed welcome screen scrollbar issue\n• Consistent model picker width across all providers\n• Removed redundant scope label from provider rows",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.9.1/ClawAPI.zip",
-  "sha256": "223ea50225935814138c9e15ca9c6bd05a1a9d309a3fa1441e381932d5b8c49d"
+  "releaseNotes": "• Added 9 new providers: Kilo Code, Synthetic, MiniMax China, GitHub Copilot, Google Gemini CLI, Chutes, Claude CLI, Codex CLI, vLLM\n• 34 total supported providers (up from 25)\n• Health checks for new API-key providers\n• vLLM added to local provider detection",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.9.2/ClawAPI.zip",
+  "sha256": "60965c1e64dcf786edf90f39bef63cf87cc64dee47da2e879a0a3282d469971f"
 }

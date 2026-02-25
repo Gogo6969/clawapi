@@ -249,7 +249,7 @@ public enum ProviderHealthCheck {
         guard let model else { return nil }
 
         // Skip providers where deep check doesn't apply
-        if scope == "google-ai" || scope == "ollama" || scope == "lmstudio" || scope == "litellm" {
+        if ["google-ai", "ollama", "lmstudio", "litellm", "vllm", "kilocode", "synthetic"].contains(scope) {
             return nil
         }
 
@@ -352,6 +352,8 @@ public enum ProviderHealthCheck {
             url = URL(string: "http://localhost:1234/v1/models")
         case "litellm":
             url = URL(string: "http://localhost:4000/v1/models")
+        case "vllm":
+            url = URL(string: "http://localhost:8000/v1/models")
         default:
             return .unknown
         }
@@ -497,6 +499,18 @@ public enum ProviderHealthCheck {
                 url: "https://api.xiaomimimo.com/anthropic/v1/models",
                 authStyle: .customHeader("x-api-key"),
                 extraHeaders: [("anthropic-version", "2023-06-01")])
+        case "kilocode":
+            return CheckConfig(
+                url: "https://api.kilo.ai/api/gateway/v1/models",
+                authStyle: .bearer,
+                extraHeaders: [("anthropic-version", "2023-06-01")])
+        case "synthetic":
+            return CheckConfig(
+                url: "https://api.synthetic.new/anthropic/v1/models",
+                authStyle: .bearer,
+                extraHeaders: [("anthropic-version", "2023-06-01")])
+        case "minimax-cn":
+            return CheckConfig(url: "https://api.minimaxi.com/v1/models", authStyle: .bearer, extraHeaders: [])
         default:
             let template = ServiceCatalog.find(scope)
             let baseURL = template?.domains.first.map { "https://\($0)" } ?? ""

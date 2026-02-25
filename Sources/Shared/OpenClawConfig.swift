@@ -393,6 +393,15 @@ public enum OpenClawConfig {
         "qianfan": "qianfan",
         "xiaomi": "xiaomi",
         "litellm": "litellm",
+        "kilocode": "kilocode",
+        "synthetic": "synthetic",
+        "minimax-cn": "minimax-cn",
+        "github-copilot": "github-copilot",
+        "google-gemini-cli": "google-gemini-cli",
+        "chutes": "chutes",
+        "claude-cli": "claude-cli",
+        "codex-cli": "codex-cli",
+        "vllm": "vllm",
     ]
 
     /// Look up the OpenClaw provider for a scope, matching on the base name
@@ -430,6 +439,15 @@ public enum OpenClawConfig {
         "qianfan":             ("https://qianfan.baidubce.com/v2",        "openai-completions"),
         "xiaomi":              ("https://api.xiaomimimo.com/anthropic",    "anthropic-messages"),
         "litellm":             ("http://localhost:4000",                   "openai-completions"),
+        "kilocode":            ("https://api.kilo.ai/api/gateway/",       "anthropic-messages"),
+        "synthetic":           ("https://api.synthetic.new/anthropic",     "anthropic-messages"),
+        "minimax-cn":          ("https://api.minimaxi.com/v1",            "openai-completions"),
+        "github-copilot":      ("https://api.individual.githubcopilot.com", "openai-completions"),
+        "google-gemini-cli":   ("https://generativelanguage.googleapis.com", "google-genai"),
+        "chutes":              ("https://api.chutes.ai",                  "openai-completions"),
+        "claude-cli":          ("https://api.anthropic.com",              "anthropic-messages"),
+        "codex-cli":           ("https://api.openai.com/v1",             "openai-completions"),
+        "vllm":                ("http://localhost:8000/v1",               "openai-completions"),
     ]
 
     /// Map ClawAPI scopes to the default model.
@@ -460,6 +478,15 @@ public enum OpenClawConfig {
         "qianfan": "qianfan/deepseek-v3.2",
         "xiaomi": "xiaomi/mimo-v2-flash",
         "litellm": "litellm/claude-opus-4-6",
+        "kilocode": "kilocode/anthropic/claude-opus-4.6",
+        "synthetic": "synthetic/hf:MiniMaxAI/MiniMax-M2.1",
+        "minimax-cn": "minimax-cn/MiniMax-M2.5",
+        "github-copilot": "github-copilot/claude-sonnet-4.5",
+        "google-gemini-cli": "google-gemini-cli/gemini-2.5-pro",
+        "chutes": "chutes/deepseek/deepseek-r1-0528",
+        "claude-cli": "claude-cli/claude-opus-4-6",
+        "codex-cli": "codex-cli/gpt-5.3-codex",
+        "vllm": "vllm/default",
     ]
 
     /// Whether a scope requires an API key.
