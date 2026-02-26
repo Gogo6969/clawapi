@@ -510,16 +510,30 @@ public enum ServiceCatalog {
     }
 
     /// Locate the openclaw binary. .app bundles have a minimal PATH,
-    /// so we check common Homebrew / nvm / system locations explicitly.
+    /// so we check common Homebrew / nvm / npm-global / system locations explicitly.
     private static func findOpenClaw() -> URL? {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
         let candidates = [
+            "\(home)/.npm-global/bin/openclaw",
             "/opt/homebrew/bin/openclaw",
             "/usr/local/bin/openclaw",
             "/usr/bin/openclaw",
+            "\(home)/.nvm/current/bin/openclaw",
+            "\(home)/.local/bin/openclaw",
         ]
         for path in candidates {
             if FileManager.default.isExecutableFile(atPath: path) {
                 return URL(fileURLWithPath: path)
+            }
+        }
+        // Fallback: check PATH (works in debug builds launched from terminal)
+        let env = ProcessInfo.processInfo.environment
+        if let pathDirs = env["PATH"]?.split(separator: ":") {
+            for dir in pathDirs {
+                let path = "\(dir)/openclaw"
+                if FileManager.default.isExecutableFile(atPath: path) {
+                    return URL(fileURLWithPath: path)
+                }
             }
         }
         return nil
@@ -533,8 +547,14 @@ public enum ServiceCatalog {
         process.executableURL = openclawURL
         process.arguments = ["models", "list", "--all", "--json"]
         // Ensure node can find its modules even inside a .app bundle
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
         var env = ProcessInfo.processInfo.environment
-        let extraPaths = ["/opt/homebrew/bin", "/usr/local/bin"]
+        let extraPaths = [
+            "\(home)/.npm-global/bin",
+            "/opt/homebrew/bin",
+            "/usr/local/bin",
+            "\(home)/.nvm/current/bin",
+        ]
         let currentPath = env["PATH"] ?? "/usr/bin:/bin"
         env["PATH"] = (extraPaths + [currentPath]).joined(separator: ":")
         process.environment = env

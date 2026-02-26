@@ -1,8 +1,8 @@
 {
-  "version": "1.9.2",
+  "version": "1.9.3",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "• Added 9 new providers: Kilo Code, Synthetic, MiniMax China, GitHub Copilot, Google Gemini CLI, Chutes, Claude CLI, Codex CLI, vLLM\n• 34 total supported providers (up from 25)\n• Health checks for new API-key providers\n• vLLM added to local provider detection",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.9.2/ClawAPI.zip",
-  "sha256": "60965c1e64dcf786edf90f39bef63cf87cc64dee47da2e879a0a3282d469971f"
+  "releaseNotes": "• Fixed sub-model picker not loading (openclaw binary not found from .app bundle)\n• Added ~/.npm-global/bin and other common paths to openclaw discovery\n• PATH fallback for debug/terminal launches",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.9.3/ClawAPI.zip",
+  "sha256": "d15a073fd17ce8c431fad004bbe3ef5888c231793e06a067fd4098270399eede"
 }
