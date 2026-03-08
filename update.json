@@ -4,5 +4,5 @@
   "minimumSystemVersion": "14.0",
   "releaseNotes": "• Add Amazon Bedrock, Azure OpenAI, Google Vertex AI, Google Antigravity providers (38 total)\n• Add GPT-5.4 and GPT-5.4 Pro to OpenAI model picker\n• Add Gemini 3.1 Flash Lite to Google AI model picker",
   "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.9.4/ClawAPI.zip",
-  "sha256": "c09c3c4d99e33771d96a6a5ac53296ae46546acb1ad467200d4b984a801e9062"
+  "sha256": "1785da7d35e7b75cd5e81b740204330e3e18a943c7ef0a4f2cce17b0d7151040"
 }
