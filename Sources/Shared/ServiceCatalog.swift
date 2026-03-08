@@ -248,6 +248,46 @@ public enum ServiceCatalog {
             keyPlaceholder: "API key"
         ),
 
+        // ── Cloud Platform Providers ──
+        ServiceTemplate(
+            name: "Amazon Bedrock",
+            scope: "amazon-bedrock",
+            domains: ["bedrock-runtime.us-east-1.amazonaws.com", "bedrock-runtime.us-west-2.amazonaws.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat", "general"],
+            keyPlaceholder: "AWS access key"
+        ),
+        ServiceTemplate(
+            name: "Azure OpenAI",
+            scope: "azure-openai-responses",
+            domains: ["openai.azure.com"],
+            credentialType: .customHeader,
+            customHeaderName: "api-key",
+            suggestedTags: ["coding", "chat", "general"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Google Vertex AI",
+            scope: "google-vertex",
+            domains: ["aiplatform.googleapis.com"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding", "chat", "research"],
+            keyPlaceholder: "API key"
+        ),
+        ServiceTemplate(
+            name: "Google Antigravity",
+            scope: "google-antigravity",
+            domains: ["antigravity.google"],
+            credentialType: .bearerToken,
+            customHeaderName: nil,
+            suggestedTags: ["coding"],
+            keyPlaceholder: "",
+            requiresKey: false,
+            authMethod: .oauth(provider: "google-antigravity")
+        ),
+
         // ── Gateway / Proxy Providers ──
         ServiceTemplate(
             name: "Kilo Code",
@@ -435,6 +475,10 @@ public enum ServiceCatalog {
         "claude-cli": "claude-cli",
         "codex-cli": "codex-cli",
         "vllm": "vllm",
+        "amazon-bedrock": "amazon-bedrock",
+        "azure-openai-responses": "azure-openai-responses",
+        "google-vertex": "google-vertex",
+        "google-antigravity": "google-antigravity",
         "claude": "anthropic",  // Legacy alias — some policies use "claude" instead of "anthropic"
     ]
 
@@ -605,6 +649,21 @@ public enum ServiceCatalog {
             }
         }
 
+        // Inject latest models not yet in OpenClaw's CLI catalog
+        injectIfMissing(
+            into: &catalog, scope: "openai",
+            models: [
+                ModelOption(id: "openai/gpt-5.4", name: "GPT-5.4"),
+                ModelOption(id: "openai/gpt-5.4-pro", name: "GPT-5.4 Pro"),
+            ]
+        )
+        injectIfMissing(
+            into: &catalog, scope: "google-ai",
+            models: [
+                ModelOption(id: "google/gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite"),
+            ]
+        )
+
         // Ollama is local — fetch models from its API instead of the cloud catalog
         let ollamaModels = fetchOllamaModels()
         if !ollamaModels.isEmpty {
@@ -701,6 +760,16 @@ public enum ServiceCatalog {
         semaphore.wait()
 
         return result
+    }
+
+    /// Add models to a scope's catalog if they aren't already present.
+    private static func injectIfMissing(into catalog: inout [String: [ModelOption]], scope: String, models: [ModelOption]) {
+        var existing = catalog[scope] ?? []
+        let ids = Set(existing.map(\.id))
+        for model in models where !ids.contains(model.id) {
+            existing.append(model)
+        }
+        catalog[scope] = existing
     }
 }
 
