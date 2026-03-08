@@ -658,6 +658,12 @@ public enum ServiceCatalog {
             ]
         )
         injectIfMissing(
+            into: &catalog, scope: "openai-codex",
+            models: [
+                ModelOption(id: "openai-codex/gpt-5.4", name: "GPT-5.4"),
+            ]
+        )
+        injectIfMissing(
             into: &catalog, scope: "google-ai",
             models: [
                 ModelOption(id: "google/gemini-3.1-flash-lite", name: "Gemini 3.1 Flash Lite"),
