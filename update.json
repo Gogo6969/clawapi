@@ -1,8 +1,8 @@
 {
-  "version": "1.9.3",
+  "version": "1.9.4",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "• Fixed sub-model picker not loading (openclaw binary not found from .app bundle)\n• Added ~/.npm-global/bin and other common paths to openclaw discovery\n• PATH fallback for debug/terminal launches",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.9.3/ClawAPI.zip",
-  "sha256": "d15a073fd17ce8c431fad004bbe3ef5888c231793e06a067fd4098270399eede"
+  "releaseNotes": "• Add Amazon Bedrock, Azure OpenAI, Google Vertex AI, Google Antigravity providers (38 total)\n• Add GPT-5.4 and GPT-5.4 Pro to OpenAI model picker\n• Add Gemini 3.1 Flash Lite to Google AI model picker",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.9.4/ClawAPI.zip",
+  "sha256": "c09c3c4d99e33771d96a6a5ac53296ae46546acb1ad467200d4b984a801e9062"
 }
