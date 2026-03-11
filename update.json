@@ -4,5 +4,5 @@
   "minimumSystemVersion": "14.0",
   "releaseNotes": "• New Agents tab — create, edit, and manage OpenClaw agents\n• Two-step agent creation wizard with field help tooltips\n• Per-agent model selection with popular models picker\n• Agent identity (name + emoji) auto-synced to OpenClaw dashboard\n• Channel binding management per agent\n• FAQ updated with agent creation guide",
   "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.10.0/ClawAPI.zip",
-  "sha256": "c4e4bda2f3da0d310be378a1c78bcbbfeedcd5b2af987a121768f6ceaa0b859f"
+  "sha256": "28e7b65e0c5e1974e13422d1e2dd4191b5c02a93c1aabe5dabd0c39df9ff8236"
 }
