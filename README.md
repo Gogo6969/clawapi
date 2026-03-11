@@ -45,6 +45,8 @@ The app is signed with Apple Developer ID and notarized — no Gatekeeper warnin
 - **Request auditing** — Full logs of every approved, denied, and errored API request
 - **Provider priority** — Drag-and-drop to set which provider is primary
 - **Approval modes** — Auto-approve, manual approval, or queue requests per provider
+- **Agent management** — Create, edit, and manage OpenClaw agents with per-agent models and channel bindings
+- **Identity sync** — Agent name and emoji auto-synced to the OpenClaw dashboard
 - **No proxy, no middleware** — OpenClaw talks directly to provider APIs using your keys
 
 ## Screenshots
@@ -121,8 +123,8 @@ When you switch models, a popup reminds you to start a new session in OpenClaw b
 |-----|---------|
 | **Providers** | Add, configure, enable/disable, and reorder your API providers |
 | **Sync** | View the active model and fallback chain synced to OpenClaw |
+| **Agents** | Create, edit, and manage OpenClaw agents with per-agent models and channel bindings |
 | **Activity** | See real-time request counts, recent activity, and pending approvals |
-| **Logs** | Full audit history with search, filtering, and details |
 | **Usage** | Check credit balances and billing for supported providers |
 
 ## Provider Priority & Fallback Chain
