@@ -1,8 +1,8 @@
 {
-  "version": "1.9.4",
+  "version": "1.10.0",
   "build": "1",
   "minimumSystemVersion": "14.0",
-  "releaseNotes": "• Add Amazon Bedrock, Azure OpenAI, Google Vertex AI, Google Antigravity providers (38 total)\n• Add GPT-5.4 and GPT-5.4 Pro to OpenAI model picker\n• Add Gemini 3.1 Flash Lite to Google AI model picker",
-  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.9.4/ClawAPI.zip",
-  "sha256": "1785da7d35e7b75cd5e81b740204330e3e18a943c7ef0a4f2cce17b0d7151040"
+  "releaseNotes": "• New Agents tab — create, edit, and manage OpenClaw agents\n• Two-step agent creation wizard with field help tooltips\n• Per-agent model selection with popular models picker\n• Agent identity (name + emoji) auto-synced to OpenClaw dashboard\n• Channel binding management per agent\n• FAQ updated with agent creation guide",
+  "downloadURL": "https://github.com/Gogo6969/clawapi/releases/download/v1.10.0/ClawAPI.zip",
+  "sha256": "c4e4bda2f3da0d310be378a1c78bcbbfeedcd5b2af987a121768f6ceaa0b859f"
 }
