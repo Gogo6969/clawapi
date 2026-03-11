@@ -484,6 +484,8 @@ struct ScopePolicyRow: View {
                                 EmptyView()
                             }
                             .pickerStyle(.menu)
+                            .frame(width: 190, alignment: .leading)
+                            .clipped()
                         }
                         .frame(width: 220, alignment: .leading)
                     }

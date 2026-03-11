@@ -42,7 +42,7 @@ enum TitleBarBranding {
 }
 
 enum AppTab: Hashable {
-    case providers, model, activity, usage
+    case providers, model, agents, activity, usage
 }
 
 struct ContentView: View {
@@ -72,6 +72,12 @@ struct ContentView: View {
                     Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                 }
                 .tag(AppTab.model)
+
+            AgentsView()
+                .tabItem {
+                    Label("Agents", systemImage: "person.crop.rectangle.stack")
+                }
+                .tag(AppTab.agents)
 
             if !store.auditEntries.isEmpty {
                 ActivityView(selectedTab: $selectedTab, showingPendingReview: $showingPendingReview)

@@ -1307,6 +1307,232 @@ public enum OpenClawConfig {
         return OAuthAdoptionResult(policies: newPolicies, activeScope: activeScope)
     }
 
+    // MARK: - Agent Management
+
+    /// Path to the agents directory (local mode).
+    private static let agentsBaseURL: URL = {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".openclaw")
+            .appendingPathComponent("agents")
+    }()
+
+    /// Read all agents and channel bindings from openclaw.json.
+    /// If `agents.list` is empty but the `~/.openclaw/agents/main/` directory exists,
+    /// synthesizes a "main" agent entry so the UI always shows it.
+    public static func readAgents() -> AgentReadResult {
+        guard let data = try? readConfig(),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return AgentReadResult()
+        }
+
+        let agentsDict = json["agents"] as? [String: Any] ?? [:]
+        let defaults = agentsDict["defaults"] as? [String: Any] ?? [:]
+        let modelDefaults = defaults["model"] as? [String: Any] ?? [:]
+        let primary = modelDefaults["primary"] as? String
+        let fallbacks = modelDefaults["fallbacks"] as? [String] ?? []
+
+        // Parse agents.list array
+        var agents: [AgentConfig] = []
+        if let list = agentsDict["list"] as? [[String: Any]] {
+            for entry in list {
+                if let agent = parseAgentEntry(entry) {
+                    agents.append(agent)
+                }
+            }
+        }
+
+        // If no agents.list but main agent directory exists, synthesize
+        if agents.isEmpty {
+            let mainDir: Bool
+            if connectionSettings.mode == .remote {
+                mainDir = RemoteShell.fileExists(
+                    path: "~/.openclaw/agents/main/agent",
+                    settings: connectionSettings
+                )
+            } else {
+                mainDir = FileManager.default.fileExists(
+                    atPath: agentsBaseURL.appendingPathComponent("main/agent").path
+                )
+            }
+            if mainDir {
+                agents.append(AgentConfig(
+                    id: "main",
+                    name: "OpenClaw",
+                    emoji: "🦞",
+                    isDefault: true,
+                    primaryModel: primary
+                ))
+            }
+        }
+
+        // Parse top-level bindings array
+        var bindings: [ChannelBinding] = []
+        if let bindingsArray = json["bindings"] as? [[String: Any]] {
+            for entry in bindingsArray {
+                if let agentId = entry["agentId"] as? String,
+                   let match = entry["match"] as? [String: Any],
+                   let channel = match["channel"] as? String {
+                    bindings.append(ChannelBinding(
+                        agentId: agentId,
+                        channel: channel,
+                        accountId: match["accountId"] as? String
+                    ))
+                }
+            }
+        }
+
+        return AgentReadResult(
+            agents: agents,
+            bindings: bindings,
+            defaultsPrimary: primary,
+            defaultsFallbacks: fallbacks
+        )
+    }
+
+    /// Parse a single agent entry from the JSON dictionary.
+    private static func parseAgentEntry(_ entry: [String: Any]) -> AgentConfig? {
+        guard let id = entry["id"] as? String else { return nil }
+        let name = entry["name"] as? String ?? id.capitalized
+        let identityDict = entry["identity"] as? [String: Any]
+        let emoji = identityDict?["emoji"] as? String
+            ?? entry["emoji"] as? String
+            ?? "🤖"
+        let isDefault = entry["default"] as? Bool ?? false
+        let model = entry["model"] as? String
+        let workspace = entry["workspace"] as? String
+        let maxConcurrent = entry["maxConcurrent"] as? Int
+
+        var groupChat: AgentGroupChat?
+        if let gc = entry["groupChat"] as? [String: Any] {
+            groupChat = AgentGroupChat(
+                mentionPatterns: gc["mentionPatterns"] as? [String],
+                requireMention: gc["requireMention"] as? Bool
+            )
+        }
+
+        var tools: AgentToolConfig?
+        if let t = entry["tools"] as? [String: Any] {
+            tools = AgentToolConfig(
+                allow: t["allow"] as? [String],
+                deny: t["deny"] as? [String]
+            )
+        }
+
+        var sandbox: AgentSandboxConfig?
+        if let s = entry["sandbox"] as? [String: Any] {
+            sandbox = AgentSandboxConfig(
+                mode: s["mode"] as? String,
+                scope: s["scope"] as? String
+            )
+        }
+
+        return AgentConfig(
+            id: id,
+            name: name,
+            emoji: emoji,
+            isDefault: isDefault,
+            primaryModel: model,
+            workspace: workspace,
+            maxConcurrent: maxConcurrent,
+            groupChat: groupChat,
+            tools: tools,
+            sandbox: sandbox
+        )
+    }
+
+    /// Serialize an AgentConfig back to a JSON-compatible dictionary.
+    private static func serializeAgent(_ agent: AgentConfig) -> [String: Any] {
+        var dict: [String: Any] = [
+            "id": agent.id,
+            "name": agent.name,
+        ]
+        if agent.isDefault { dict["default"] = true }
+        if let model = agent.primaryModel { dict["model"] = model }
+        if let workspace = agent.workspace { dict["workspace"] = workspace }
+        if let mc = agent.maxConcurrent { dict["maxConcurrent"] = mc }
+
+        // Write identity block — OpenClaw uses this for the agent's display name & emoji
+        // in conversations (the "Identity Name" shown in the dashboard).
+        var identity: [String: Any] = ["name": agent.name]
+        if !agent.emoji.isEmpty { identity["emoji"] = agent.emoji }
+        dict["identity"] = identity
+
+        if let gc = agent.groupChat {
+            var gcDict: [String: Any] = [:]
+            if let mp = gc.mentionPatterns { gcDict["mentionPatterns"] = mp }
+            if let rm = gc.requireMention { gcDict["requireMention"] = rm }
+            if !gcDict.isEmpty { dict["groupChat"] = gcDict }
+        }
+        if let t = agent.tools {
+            var tDict: [String: Any] = [:]
+            if let allow = t.allow { tDict["allow"] = allow }
+            if let deny = t.deny { tDict["deny"] = deny }
+            if !tDict.isEmpty { dict["tools"] = tDict }
+        }
+        if let s = agent.sandbox {
+            var sDict: [String: Any] = [:]
+            if let mode = s.mode { sDict["mode"] = mode }
+            if let scope = s.scope { sDict["scope"] = scope }
+            if !sDict.isEmpty { dict["sandbox"] = sDict }
+        }
+
+        return dict
+    }
+
+    /// Write agents and bindings back to openclaw.json.
+    /// Preserves all other config sections (agents.defaults, channels, auth, etc.) untouched.
+    public static func writeAgentsAndBindings(agents: [AgentConfig], bindings: [ChannelBinding]) throws {
+        guard isInstalled else { throw ConfigError.notInstalled }
+        guard let data = try? readConfig() else { throw ConfigError.readFailed }
+        guard var json = try? JSONSerialization.jsonObject(with: data, options: .mutableContainers)
+                as? [String: Any] else { throw ConfigError.parseFailed }
+
+        // Update agents.list (preserve agents.defaults and everything else in agents)
+        var agentsDict = json["agents"] as? [String: Any] ?? [:]
+        agentsDict["list"] = agents.map { serializeAgent($0) }
+        json["agents"] = agentsDict
+
+        // Update top-level bindings
+        json["bindings"] = bindings.map { binding -> [String: Any] in
+            var match: [String: Any] = ["channel": binding.channel]
+            if let accountId = binding.accountId { match["accountId"] = accountId }
+            return ["agentId": binding.agentId, "match": match]
+        }
+
+        // Update meta timestamp
+        var meta = json["meta"] as? [String: Any] ?? [:]
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        meta["lastTouchedAt"] = fmt.string(from: Date())
+        json["meta"] = meta
+
+        let newData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys])
+        try writeConfig(newData)
+
+        logger.info("Wrote \(agents.count) agents and \(bindings.count) bindings to openclaw.json")
+    }
+
+    /// Create the agent directory structure at `~/.openclaw/agents/<id>/agent/`.
+    /// Does nothing if the directory already exists. Supports local mode only.
+    public static func createAgentDirectory(agentId: String) throws {
+        guard connectionSettings.mode == .local else {
+            logger.warning("Agent directory creation not supported in remote mode")
+            return
+        }
+        let agentDir = agentsBaseURL
+            .appendingPathComponent(agentId)
+            .appendingPathComponent("agent")
+        try FileManager.default.createDirectory(at: agentDir, withIntermediateDirectories: true)
+
+        // Also create sessions directory
+        let sessionsDir = agentsBaseURL
+            .appendingPathComponent(agentId)
+            .appendingPathComponent("sessions")
+        try FileManager.default.createDirectory(at: sessionsDir, withIntermediateDirectories: true)
+
+        logger.info("Created agent directory for '\(agentId)' at \(agentDir.path)")
+    }
+
     // MARK: - Errors
 
     public enum ConfigError: LocalizedError {

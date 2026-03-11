@@ -59,6 +59,9 @@ struct FAQView: View {
                             FAQSubsection(title: "Sync") {
                                 Text("Shows what's synced to OpenClaw right now — active model, fallbacks, and provider config.")
                             }
+                            FAQSubsection(title: "Agents") {
+                                Text("Manage your OpenClaw agents. Assign models, bind channels, and configure per-agent settings like workspace and sandbox.")
+                            }
                             FAQSubsection(title: "Activity") {
                                 Text("Provider changes, health checks, and proxy requests. Search and filter the full history. Appears once there is activity to show.")
                             }
@@ -188,6 +191,115 @@ struct FAQView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("macOS may prompt for folder access (e.g. Documents) when ClawAPI reads OpenClaw's config files. ClawAPI does **not** read, write, or modify anything outside of ~/.openclaw/ and ~/Library/Application Support/ClawAPI/.")
                             Text("You can safely allow or deny — ClawAPI works either way. The prompt only appears once per location.")
+                        }
+                    }
+
+                    Divider()
+
+                    // ── Agents ──
+                    FAQSection(icon: "person.crop.rectangle.stack", color: .purple, title: "Agents \u{2014} How They Work") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            FAQSubsection(title: "What is an agent?") {
+                                Text("An agent is an independent AI worker in OpenClaw with its own model, workspace, and channel bindings. The \u{201C}main\u{201D} agent is created automatically when you first set up OpenClaw. You can create additional agents for different tasks or channels.")
+                            }
+                            FAQSubsection(title: "How do I create an agent?") {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Click the **+** button in the Agents tab toolbar. A two-step wizard guides you:")
+                                    Text("**Step 1 \u{2014} Configure:** Enter a name, pick an emoji, and optionally set a workspace path. The Agent ID is auto-generated from the name (kebab-case) but you can edit it. The ID becomes the directory name under ~/.openclaw/agents/ and cannot be changed later.")
+                                    Text("**Step 2 \u{2014} Choose Model:** Toggle \u{201C}Use default model\u{201D} to inherit Provider #1\u{2019}s model, or turn it off to pick a specific model. You can type any model ID or pick from the popular models list.")
+                                    Text("The agent\u{2019}s identity name is automatically synced to OpenClaw so it appears correctly in the dashboard and logs.")
+                                }
+                            }
+                            FAQSubsection(title: "Custom model \u{2014} agent vs global default") {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Each agent can use its own model \u{2014} that\u{2019}s intentional. A research agent might use a reasoning model while a chat agent uses a fast one. When an agent has a custom model, a blue \u{24D8} info icon appears on its row.")
+                                    Text("If \u{201C}Use default model\u{201D} is ON, the agent inherits Provider #1\u{2019}s model from the Providers tab. If OFF, the model you pick for that agent takes priority.")
+                                }
+                            }
+                            FAQSubsection(title: "Agents vs Providers") {
+                                Text("Providers are your API credentials (keys, OAuth tokens). Agents are the AI workers that use those credentials. Multiple agents can share the same provider \u{2014} for example, three agents can all use your OpenAI key but with different models.")
+                            }
+                            FAQSubsection(title: "How do agents receive messages?") {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("There are two paths:")
+                                    Text("**1. Channel bindings** \u{2014} rules that route messages from a specific channel (Telegram, Slack, Discord, etc.) to a specific agent. The **default agent** catches everything that doesn\u{2019}t match a binding.")
+                                    Text("**2. Sub-agent spawning** \u{2014} the main agent (or any agent) can spawn another agent as a background worker using /subagents spawn or the sessions_spawn tool. The sub-agent works independently and announces its result back when done.")
+                                    Text("An agent without channel bindings and not set as default can still be used as a sub-agent \u{2014} it just won\u{2019}t receive direct messages from any chat channel.")
+                                }
+                            }
+                            FAQSubsection(title: "Can I address a specific agent from chat?") {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Not by @mentioning its name. OpenClaw routes incoming messages by **channel and account**, not by agent name.")
+                                    Text("But you can tell your main agent to **delegate work** to another agent. Either use the slash command:")
+                                    Text("/subagents spawn research-bot \u{201C}Summarize competitor pricing\u{201D}")
+                                        .font(.system(.caption, design: .monospaced))
+                                        .padding(6)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 4))
+                                    Text("Or just ask in natural language: \u{201C}Use the research bot to look up pricing.\u{201D} If tools.agentToAgent is enabled, your main agent can spawn it automatically.")
+                                }
+                            }
+                            FAQSubsection(title: "Sub-agents and agent teams") {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Sub-agents are background workers spawned from a running agent. They get their own session, model, and workspace. When finished, they **announce** their result back to the agent that spawned them.")
+                                    Text("With maxSpawnDepth: 2, you can build a **team pattern**: main agent \u{2192} orchestrator sub-agent \u{2192} multiple worker sub-sub-agents running in parallel. Results flow back up the chain.")
+                                    Text("To enable, set **tools.agentToAgent.enabled: true** and list allowed agent IDs in **tools.agentToAgent.allow** in your openclaw.json. Configure concurrency via **agents.defaults.subagents**.")
+                                }
+                            }
+                            FAQSubsection(title: "What are channel bindings?") {
+                                Text("Channel bindings route messages from specific platforms (Telegram, Slack, Discord, etc.) to a specific agent. Without bindings, all messages go to the default agent. Use Account ID when you have multiple bot accounts on one platform.")
+                            }
+                            FAQSubsection(title: "What happens when I delete an agent?") {
+                                Text("The agent is removed from the config and won\u{2019}t receive messages. Its session history and files on disk are preserved under ~/.openclaw/agents/<id>/.")
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    // ── Agent Settings Reference ──
+                    FAQSection(icon: "gearshape.2", color: .indigo, title: "Agent Settings Reference") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            FAQSubsection(title: "Name") {
+                                Text("The display name for this agent. Shown in the agent list and logs. Does not affect how OpenClaw routes messages.")
+                            }
+                            FAQSubsection(title: "Emoji") {
+                                Text("The avatar icon shown next to the agent name in ClawAPI.")
+                            }
+                            FAQSubsection(title: "Agent ID") {
+                                Text("The internal identifier and directory name under ~/.openclaw/agents/. Cannot be changed after creation. Used by OpenClaw for routing and session storage.")
+                            }
+                            FAQSubsection(title: "Default Agent") {
+                                Text("The default agent receives all messages that don't match a specific channel binding. Only one agent can be the default at a time.")
+                            }
+                            FAQSubsection(title: "Model Configuration") {
+                                Text("Pick which AI model this agent uses. If \"Use default model\" is ON, the agent inherits Provider #1's model from the Providers tab. If OFF, the model you pick here takes priority over Provider #1.")
+                            }
+                            FAQSubsection(title: "Custom Model") {
+                                Text("Type any model ID manually (e.g. provider/model-name) for models not in the catalog. Useful for newly released or custom-deployed models.")
+                            }
+                            FAQSubsection(title: "Channel Bindings") {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Route direct messages from specific channels (Telegram, Slack, Discord, etc.) to this agent. Each binding needs its own channel account (e.g. a separate Telegram bot token).")
+                                    Text("An agent without bindings and not set as default won\u{2019}t receive direct channel messages, but can still be spawned as a **sub-agent** by other agents.")
+                                    Text("Account ID is optional \u{2014} use it when you have multiple bot accounts on one channel.")
+                                }
+                            }
+                            FAQSubsection(title: "Workspace Path") {
+                                Text("The working directory where this agent runs commands and edits files. Each agent can have its own project folder. Defaults to ~/.openclaw/workspace.")
+                            }
+                            FAQSubsection(title: "Max Concurrent Sessions") {
+                                Text("How many conversations this agent handles simultaneously. Extra messages queue up. Default is 4. Increase for high-traffic channels, decrease to limit resource usage.")
+                            }
+                            FAQSubsection(title: "Sandbox Mode") {
+                                Text("Isolates the agent's file system access in a Docker container. Off = full access. Non-Main = sandbox only on non-main git branches. All = always sandboxed. Requires Docker to be installed and running.")
+                            }
+                            FAQSubsection(title: "Tools Allow / Deny") {
+                                Text("Allow is a whitelist — if set, the agent can ONLY use these tools. Deny is a blacklist that overrides Allow. Use Deny to block specific dangerous capabilities (e.g. browser, admin). Leave both empty to allow all tools.")
+                            }
+                            FAQSubsection(title: "Require @mention / Mention Patterns") {
+                                Text("When Require @mention is ON, the agent only responds in group chats when someone uses one of the mention patterns (e.g. @bot, hey bot). When OFF, the agent responds to every message in the group.")
+                            }
                         }
                     }
 
